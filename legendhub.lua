@@ -16,47 +16,44 @@ local rad = math.rad
 local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
-local DataStore = {
-    FileName = "LEGEND_HUB_DATA",
-    Data = {}
-}
+local SAVE = _G.LH_Saves or {}
+_G.LH_Saves = SAVE
+SAVE.kaTargets = SAVE.kaTargets or ""
+SAVE.kaFriends = SAVE.kaFriends or ""
+SAVE.headSit = SAVE.headSit or ""
+SAVE.curTheme = SAVE.curTheme or "legend"
+SAVE.keybinds = SAVE.keybinds or {}
 
-local function saveData()
-    local success, result = pcall(function()
-        return writefile(DataStore.FileName, Http:JSONEncode(DataStore.Data))
-    end)
-    if success then
-        print("Data saved")
-    end
-end
-
-local function loadData()
-    local success, result = pcall(function()
-        if isfile(DataStore.FileName) then
-            local content = readfile(DataStore.FileName)
-            if content ~= "" then
-                DataStore.Data = Http:JSONDecode(content)
-                return true
-            end
+pcall(function()
+    if readfile then
+        local ok, d = pcall(function() return Http:JSONDecode(readfile("lh_data.json")) end)
+        if ok and type(d) == "table" then
+            for k, v in pairs(d) do SAVE[k] = v end
         end
-        return false
+    end
+end)
+
+local function DoSave()
+    pcall(function()
+        if writefile then
+            writefile("lh_data.json", Http:JSONEncode({
+                kaTargets = SAVE.kaTargets,
+                kaFriends = SAVE.kaFriends,
+                headSit = SAVE.headSit,
+                curTheme = SAVE.curTheme,
+                keybinds = SAVE.keybinds,
+            }))
+        end
     end)
-    if success and result then
-        print("Data loaded")
-        return true
-    end
-    return false
 end
 
-local function saveSetting(key, value)
-    DataStore.Data[key] = value
-    saveData()
+local function SaveSetting(key, value)
+    SAVE[key] = value
+    DoSave()
 end
 
-local function loadSetting(key, defaultValue)
-    if DataStore.Data[key] ~= nil then
-        return DataStore.Data[key]
-    end
+local function LoadSetting(key, defaultValue)
+    if SAVE[key] ~= nil then return SAVE[key] end
     return defaultValue
 end
 
@@ -64,64 +61,64 @@ local S = {}
 setmetatable(S, {__index = function(t,k) return false end})
 
 local function loadAllSettings()
-    S.KillAuraRange = loadSetting("KillAuraRange", 50)
-    S.AttacksPerSecond = loadSetting("AttacksPerSecond", 10000)
-    S.HitboxSize = loadSetting("HitboxSize", 10)
-    S.StrafeRadius = loadSetting("StrafeRadius", 10)
-    S.StrafeSpeed = loadSetting("StrafeSpeed", 4)
-    S.StrafeOffset = loadSetting("StrafeOffset", -2)
-    S.RainbowSpeed = loadSetting("RainbowSpeed", 8)
-    S.tpSpeed = loadSetting("tpSpeed", 50)
-    S.flySpeed = loadSetting("flySpeed", 80)
-    S.tpHitRange = loadSetting("tpHitRange", 35)
-    S.glitchInt = loadSetting("glitchInt", 4)
-    S.spinSpeed = loadSetting("spinSpeed", 60)
-    S.parryRange = loadSetting("parryRange", 12)
-    S.bioTypeSpeed = loadSetting("bioTypeSpeed", 15)
-    S.orbRadius = loadSetting("orbRadius", 10)
-    S.orbSpeed = loadSetting("orbSpeed", 5)
-    S.orbHeight = loadSetting("orbHeight", 2)
-    S.rpMode = loadSetting("rpMode", "rainbow")
-    S.targetNames = loadSetting("targetNames", "")
-    S.friendNames = loadSetting("friendNames", "")
-    S.userPhrases = loadSetting("userPhrases", {"LEGEND ON TOP!"})
-    S.KillAura = loadSetting("KillAura", true)
-    S.AntiRag = loadSetting("AntiRag", true)
-    S.BypassRange = loadSetting("BypassRange", true)
-    S.AntiAFK = loadSetting("AntiAFK", true)
-    S.Invincible = loadSetting("Invincible", false)
-    S.Noclip = loadSetting("Noclip", false)
-    S.AutoBlock = loadSetting("AutoBlock", false)
-    S.AutoParry = loadSetting("AutoParry", false)
-    S.AutoStomp = loadSetting("AutoStomp", false)
-    S.GrabSpamNoTP = loadSetting("GrabSpamNoTP", false)
-    S.Spin = loadSetting("Spin", false)
-    S.RainbowTag = loadSetting("RainbowTag", false)
-    S.BioPhrases = loadSetting("BioPhrases", false)
-    S.EspBox = loadSetting("EspBox", false)
-    S.Invisible = loadSetting("Invisible", false)
-    S.AutoFarm = loadSetting("AutoFarm", false)
-    S.RapidHit = loadSetting("RapidHit", false)
-    S.PunchSpam = loadSetting("PunchSpam", false)
-    S.FakeJitter = loadSetting("FakeJitter", false)
-    S.Strafe = loadSetting("Strafe", false)
-    S.Backstab = loadSetting("Backstab", false)
-    S.Orbit = loadSetting("Orbit", false)
-    S.HeadSit = loadSetting("HeadSit", false)
-    S.Glitch = loadSetting("Glitch", false)
-    S.Hitbox = loadSetting("Hitbox", false)
-    S.HitboxVis = loadSetting("HitboxVis", false)
-    S.Fly = loadSetting("Fly", false)
-    S.TPWalk = loadSetting("TPWalk", false)
-    S.DeathTP = loadSetting("DeathTP", false)
-    S.AutoRespawn = loadSetting("AutoRespawn", false)
-    S.SafeSpot = loadSetting("SafeSpot", false)
-    S.DodgeGrab = loadSetting("DodgeGrab", false)
-    S.AntiFling = loadSetting("AntiFling", false)
-    S.InfJump = loadSetting("InfJump", false)
-    S.NameTypewriter = loadSetting("NameTypewriter", false)
-    S.Ghost = loadSetting("Ghost", false)
-    S.currentTheme = loadSetting("currentTheme", "legend")
+    S.KillAuraRange = LoadSetting("KillAuraRange", 50)
+    S.AttacksPerSecond = LoadSetting("AttacksPerSecond", 10000)
+    S.HitboxSize = LoadSetting("HitboxSize", 10)
+    S.StrafeRadius = LoadSetting("StrafeRadius", 10)
+    S.StrafeSpeed = LoadSetting("StrafeSpeed", 4)
+    S.StrafeOffset = LoadSetting("StrafeOffset", -2)
+    S.RainbowSpeed = LoadSetting("RainbowSpeed", 8)
+    S.tpSpeed = LoadSetting("tpSpeed", 50)
+    S.flySpeed = LoadSetting("flySpeed", 80)
+    S.tpHitRange = LoadSetting("tpHitRange", 35)
+    S.glitchInt = LoadSetting("glitchInt", 4)
+    S.spinSpeed = LoadSetting("spinSpeed", 60)
+    S.parryRange = LoadSetting("parryRange", 12)
+    S.bioTypeSpeed = LoadSetting("bioTypeSpeed", 15)
+    S.orbRadius = LoadSetting("orbRadius", 10)
+    S.orbSpeed = LoadSetting("orbSpeed", 5)
+    S.orbHeight = LoadSetting("orbHeight", 2)
+    S.rpMode = LoadSetting("rpMode", "rainbow")
+    S.targetNames = LoadSetting("targetNames", "")
+    S.friendNames = LoadSetting("friendNames", "")
+    S.userPhrases = LoadSetting("userPhrases", {"LEGEND ON TOP!"})
+    S.KillAura = LoadSetting("KillAura", true)
+    S.AntiRag = LoadSetting("AntiRag", true)
+    S.BypassRange = LoadSetting("BypassRange", true)
+    S.AntiAFK = LoadSetting("AntiAFK", true)
+    S.Invincible = LoadSetting("Invincible", false)
+    S.Noclip = LoadSetting("Noclip", false)
+    S.AutoBlock = LoadSetting("AutoBlock", false)
+    S.AutoParry = LoadSetting("AutoParry", false)
+    S.AutoStomp = LoadSetting("AutoStomp", false)
+    S.GrabSpamNoTP = LoadSetting("GrabSpamNoTP", false)
+    S.Spin = LoadSetting("Spin", false)
+    S.RainbowTag = LoadSetting("RainbowTag", false)
+    S.BioPhrases = LoadSetting("BioPhrases", false)
+    S.EspBox = LoadSetting("EspBox", false)
+    S.Invisible = LoadSetting("Invisible", false)
+    S.AutoFarm = LoadSetting("AutoFarm", false)
+    S.RapidHit = LoadSetting("RapidHit", false)
+    S.PunchSpam = LoadSetting("PunchSpam", false)
+    S.FakeJitter = LoadSetting("FakeJitter", false)
+    S.Strafe = LoadSetting("Strafe", false)
+    S.Backstab = LoadSetting("Backstab", false)
+    S.Orbit = LoadSetting("Orbit", false)
+    S.HeadSit = LoadSetting("HeadSit", false)
+    S.Glitch = LoadSetting("Glitch", false)
+    S.Hitbox = LoadSetting("Hitbox", false)
+    S.HitboxVis = LoadSetting("HitboxVis", false)
+    S.Fly = LoadSetting("Fly", false)
+    S.TPWalk = LoadSetting("TPWalk", false)
+    S.DeathTP = LoadSetting("DeathTP", false)
+    S.AutoRespawn = LoadSetting("AutoRespawn", false)
+    S.SafeSpot = LoadSetting("SafeSpot", false)
+    S.DodgeGrab = LoadSetting("DodgeGrab", false)
+    S.AntiFling = LoadSetting("AntiFling", false)
+    S.InfJump = LoadSetting("InfJump", false)
+    S.NameTypewriter = LoadSetting("NameTypewriter", false)
+    S.Ghost = LoadSetting("Ghost", false)
+    S.currentTheme = LoadSetting("currentTheme", "legend")
 end
 
 loadAllSettings()
@@ -794,7 +791,8 @@ local function startGhost()
         end
         for n, r in pairs(rJ) do
             local f = fJ[n]
-            if f then f.Transform = r.Transform end        end
+            if f then f.Transform = r.Transform end
+        end
     end)
 end
 
@@ -1532,6 +1530,7 @@ CB.MouseButton1Click:Connect(function()
     for _, c in ipairs(Conns) do
         pcall(function() c:Disconnect() end)
     end
+    DoSave()
     SG:Destroy()
 end)
 
@@ -1754,7 +1753,7 @@ local function Tog(p, t, cb, d)
             Transparency = en and 0.1 or 0.6
         }):Play()
         cb(en)
-        saveSetting(t, en)
+        SaveSetting(t, en)
     end)
 end
 
@@ -1826,7 +1825,7 @@ local function Sld(p, t, mn, mx, df, cb)
         local v = math.floor(mn + pct * (mx - mn))
         vl.Text = tostring(v)
         cb(v)
-        saveSetting(t, v)
+        SaveSetting(t, v)
     end
     
     tk.InputBegan:Connect(function(i)
@@ -1880,7 +1879,7 @@ local function Txt(p, ph, cb)
     t.Parent = c
     t.FocusLost:Connect(function()
         cb(t.Text)
-        saveSetting(ph, t.Text)
+        SaveSetting(ph, t.Text)
     end)
     return t
 end
@@ -1969,21 +1968,21 @@ TC(UserInputService.InputBegan, function(i, gp)
     elseif i.KeyCode == S.Keys.KillAura then
         S.KillAura = not S.KillAura
         if S.KillAura then startAura() else stopAura() end
-        saveSetting("KillAura", S.KillAura)
+        SaveSetting("KillAura", S.KillAura)
     elseif i.KeyCode == S.Keys.Fly then
         S.Fly = not S.Fly
         if S.Fly then startFly() else stopFly() end
-        saveSetting("Fly", S.Fly)
+        SaveSetting("Fly", S.Fly)
     elseif i.KeyCode == S.Keys.Ghost then
         S.Ghost = not S.Ghost
         if S.Ghost then startGhost() else stopGhost() end
-        saveSetting("Ghost", S.Ghost)
+        SaveSetting("Ghost", S.Ghost)
     elseif i.KeyCode == S.Keys.TPWalk then
         S.TPWalk = not S.TPWalk
-        saveSetting("TPWalk", S.TPWalk)
+        SaveSetting("TPWalk", S.TPWalk)
     elseif i.KeyCode == S.Keys.Invis then
         S.Invisible = not S.Invisible
-        saveSetting("Invisible", S.Invisible)
+        SaveSetting("Invisible", S.Invisible)
     elseif i.KeyCode == S.Keys.Reset then
         pcall(function()
             if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
@@ -2114,7 +2113,7 @@ for i, k in ipairs(mK) do
         end
         b.BackgroundColor3 = Color3.fromRGB(200, 180, 255)
         b.TextColor3 = Color3.fromRGB(0,0,0)
-        saveSetting("rpMode", k)
+        SaveSetting("rpMode", k)
     end)
 end
 
@@ -2222,6 +2221,7 @@ end)
 Btn(P8, "Unload", function()
     for _, c in ipairs(Conns) do pcall(function() c:Disconnect() end) end
     stopAura(); stopFly(); stopSpin(); stopGhost(true); endSafe(); stopEsp()
+    DoSave()
     wait(0.3)
     pcall(function() SG:Destroy() end)
 end)
@@ -2314,7 +2314,7 @@ Sec(P12, "DATA")
 local dataInfo = Instance.new("TextLabel")
 dataInfo.Size = UDim2.new(1, 0, 0, 24)
 dataInfo.BackgroundTransparency = 1
-dataInfo.Text = "All settings auto-save"
+dataInfo.Text = "Data saves to: lh_data.json"
 dataInfo.TextColor3 = Color3.fromRGB(160, 150, 180)
 dataInfo.TextSize = 7
 dataInfo.Font = Enum.Font.Gotham
@@ -2322,24 +2322,31 @@ dataInfo.TextWrapped = true
 dataInfo.Parent = P12
 
 Btn(P12, "Save All", function()
-    saveData()
-    Notif("Saved", "All settings saved", "ok")
+    DoSave()
+    Notif("Saved", "All settings saved to lh_data.json", "ok")
 end)
 
 Btn(P12, "Load All", function()
-    if loadData() then
-        loadAllSettings()
-        Notif("Loaded", "Settings restored", "ok")
-    else
-        Notif("No Data", "No saved data found", "err")
-    end
+    pcall(function()
+        if readfile then
+            local ok, d = pcall(function() return Http:JSONDecode(readfile("lh_data.json")) end)
+            if ok and type(d) == "table" then
+                for k, v in pairs(d) do SAVE[k] = v end
+                loadAllSettings()
+                Notif("Loaded", "Settings restored from lh_data.json", "ok")
+            else
+                Notif("No Data", "No saved data found", "err")
+            end
+        end
+    end)
 end)
 
 Btn(P12, "Delete Data", function()
     pcall(function()
-        if isfile(DataStore.FileName) then
-            delfile(DataStore.FileName)
-            DataStore.Data = {}
+        if isfile("lh_data.json") then
+            delfile("lh_data.json")
+            SAVE = {}
+            _G.LH_Saves = SAVE
             Notif("Deleted", "Data file removed", "warn")
         end
     end)
@@ -2361,7 +2368,7 @@ local function applyLegendTheme()
     SubTitle.Text = "Made by LEGEND"
     SG.Name = "LEGEND_HUB"
     S.currentTheme = "legend"
-    saveSetting("currentTheme", "legend")
+    SaveSetting("currentTheme", "legend")
     Notif("Theme", "LEGEND Theme", "ok")
 end
 
@@ -2379,7 +2386,7 @@ local function applyZicoTheme()
     SubTitle.Text = "Made by ZICO"
     SG.Name = "ZICO_HUB"
     S.currentTheme = "zico"
-    saveSetting("currentTheme", "zico")
+    SaveSetting("currentTheme", "zico")
     Notif("Theme", "ZICO Theme", "ok")
 end
 
@@ -2449,5 +2456,5 @@ Notif("LEGEND HUB", "Loaded! Made by LEGEND", "ok")
 
 print("LEGEND HUB LOADED")
 print("Made by LEGEND")
-print("Data auto-saves")
+print("Data auto-saves to: lh_data.json")
 print("Mobile friendly")
