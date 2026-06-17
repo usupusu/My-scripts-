@@ -794,8 +794,7 @@ local function startGhost()
         end
         for n, r in pairs(rJ) do
             local f = fJ[n]
-            if f then f.Transform = r.Transform end
-        end
+            if f then f.Transform = r.Transform end        end
     end)
 end
 
@@ -1400,8 +1399,8 @@ SG.Parent = CoreGui
 local Main = Instance.new("Frame")
 Main.Size = UDim2.new(0, 360, 0, 420)
 Main.Position = UDim2.new(0.5, -180, 0.5, -210)
-Main.BackgroundColor3 = Col.bg
-Main.BackgroundTransparency = 0.1
+Main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Main.BackgroundTransparency = 0.85
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
 Main.Parent = SG
@@ -1411,8 +1410,8 @@ mainCorner.CornerRadius = UDim.new(0, 16)
 local Glow = Instance.new("Frame")
 Glow.Size = UDim2.new(1, 6, 1, 6)
 Glow.Position = UDim2.new(0, -3, 0, -3)
-Glow.BackgroundColor3 = Col.acc
-Glow.BackgroundTransparency = 0.85
+Glow.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+Glow.BackgroundTransparency = 0.7
 Glow.BorderSizePixel = 0
 Glow.Parent = Main
 local glowCorner = Instance.new("UICorner", Glow)
@@ -1423,30 +1422,41 @@ BgText.Size = UDim2.new(1, 0, 1, 0)
 BgText.Position = UDim2.new(0, 0, 0, 0)
 BgText.BackgroundTransparency = 1
 BgText.Text = "LEGEND"
-BgText.TextColor3 = Color3.fromRGB(30, 25, 45)
+BgText.TextColor3 = Color3.fromRGB(255, 255, 255)
+BgText.TextTransparency = 0.92
 BgText.Font = Enum.Font.GothamBlack
 BgText.TextSize = 60
 BgText.TextScaled = true
-BgText.TextTransparency = 0.85
 BgText.ZIndex = 0
 BgText.Parent = Main
 
+local BgGradient = Instance.new("UIGradient", BgText)
+BgGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Col.accD
-TitleBar.BackgroundTransparency = 0.3
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+TitleBar.BackgroundTransparency = 0.5
 TitleBar.BorderSizePixel = 0
 TitleBar.Active = true
 TitleBar.Parent = Main
 local titleCorner = Instance.new("UICorner", TitleBar)
 titleCorner.CornerRadius = UDim.new(0, 16)
 
-local dragObj = {dragging = false, dragStart = nil, startPos = nil}
+local dragObj = {dragging = false, dragStart = nil, startPos = nil, glowStart = nil}
+
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragObj.dragging = true
         dragObj.dragStart = input.Position
         dragObj.startPos = Main.Position
+        dragObj.glowStart = Glow.Position
     end
 end)
 
@@ -1487,9 +1497,11 @@ CenterTitle.Parent = TitleBar
 
 local cGrad = Instance.new("UIGradient", CenterTitle)
 cGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 180, 255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 180, 255))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
 })
 
 local SubTitle = Instance.new("TextLabel")
@@ -1497,7 +1509,7 @@ SubTitle.Size = UDim2.new(1, -90, 0, 10)
 SubTitle.Position = UDim2.new(0, 12, 0, 28)
 SubTitle.BackgroundTransparency = 1
 SubTitle.Text = "Made by LEGEND"
-SubTitle.TextColor3 = Col.dim
+SubTitle.TextColor3 = Color3.fromRGB(180, 180, 200)
 SubTitle.Font = Enum.Font.GothamBold
 SubTitle.TextSize = 7
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -1507,7 +1519,7 @@ local CB = Instance.new("TextButton")
 CB.Size = UDim2.new(0, 24, 0, 22)
 CB.Position = UDim2.new(1, -30, 0.5, -11)
 CB.Text = "X"
-CB.BackgroundColor3 = Col.cls
+CB.BackgroundColor3 = Color3.fromRGB(100, 30, 40)
 CB.BackgroundTransparency = 0.3
 CB.TextColor3 = Color3.fromRGB(255,200,200)
 CB.Font = Enum.Font.GothamBold
@@ -1527,9 +1539,9 @@ local MB = Instance.new("TextButton")
 MB.Size = UDim2.new(0, 24, 0, 22)
 MB.Position = UDim2.new(1, -58, 0.5, -11)
 MB.Text = "-"
-MB.BackgroundColor3 = Col.mn
+MB.BackgroundColor3 = Color3.fromRGB(40, 35, 50)
 MB.BackgroundTransparency = 0.3
-MB.TextColor3 = Col.dim
+MB.TextColor3 = Color3.fromRGB(160, 150, 180)
 MB.Font = Enum.Font.GothamBold
 MB.TextSize = 14
 MB.BorderSizePixel = 0
@@ -1555,8 +1567,8 @@ end)
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, -6, 0, 28)
 TabBar.Position = UDim2.new(0, 3, 0, 44)
-TabBar.BackgroundColor3 = Col.glass
-TabBar.BackgroundTransparency = 0.4
+TabBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+TabBar.BackgroundTransparency = 0.5
 TabBar.BorderSizePixel = 0
 TabBar.ClipsDescendants = true
 TabBar.Parent = Main
@@ -1582,7 +1594,7 @@ PC.Size = UDim2.new(1, -6, 1, -78)
 PC.Position = UDim2.new(0, 3, 0, 74)
 PC.BackgroundTransparency = 1
 PC.ScrollBarThickness = 2
-PC.ScrollBarImageColor3 = Col.acc
+PC.ScrollBarImageColor3 = Color3.fromRGB(200, 180, 255)
 PC.ScrollBarImageTransparency = 0.3
 PC.AutomaticCanvasSize = Enum.AutomaticSize.Y
 PC.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1611,10 +1623,10 @@ local function mkTab(name, page)
     local t = Instance.new("TextButton")
     t.AutomaticSize = Enum.AutomaticSize.X
     t.Size = UDim2.new(0, 0, 1, 0)
-    t.BackgroundColor3 = Col.tabBg
+    t.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
     t.BackgroundTransparency = 0.5
     t.Text = name
-    t.TextColor3 = Col.mut
+    t.TextColor3 = Color3.fromRGB(100, 90, 120)
     t.Font = Enum.Font.GothamBold
     t.TextSize = 7
     t.BorderSizePixel = 0
@@ -1623,12 +1635,12 @@ local function mkTab(name, page)
     insert(tabInfo, {t, page})
     t.MouseButton1Click:Connect(function()
         for _, ti in ipairs(tabInfo) do
-            ti[1].BackgroundColor3 = Col.tabBg
-            ti[1].TextColor3 = Col.mut
+            ti[1].BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+            ti[1].TextColor3 = Color3.fromRGB(100, 90, 120)
             ti[2].Visible = false
         end
-        t.BackgroundColor3 = Col.tabAc
-        t.TextColor3 = Col.accB
+        t.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
+        t.TextColor3 = Color3.fromRGB(230, 210, 255)
         page.Visible = true
         PC.CanvasPosition = Vector2.new(0, 0)
     end)
@@ -1649,14 +1661,14 @@ mkTab("Data", P12)
 mkTab("Theme", P13)
 mkTab("Keys", P14)
 
-tabInfo[1][1].BackgroundColor3 = Col.tabAc
-tabInfo[1][1].TextColor3 = Col.accB
+tabInfo[1][1].BackgroundColor3 = Color3.fromRGB(45, 35, 65)
+tabInfo[1][1].TextColor3 = Color3.fromRGB(230, 210, 255)
 P1.Visible = true
 
 local function Sec(p, t)
     local f = Instance.new("Frame")
     f.Size = UDim2.new(1, 0, 0, 16)
-    f.BackgroundColor3 = Col.sec
+    f.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     f.BackgroundTransparency = 0.5
     f.BorderSizePixel = 0
     f.Parent = p
@@ -1666,7 +1678,7 @@ local function Sec(p, t)
     l.Position = UDim2.new(0, 6, 0, 0)
     l.BackgroundTransparency = 1
     l.Text = t:upper()
-    l.TextColor3 = Col.acc
+    l.TextColor3 = Color3.fromRGB(200, 180, 255)
     l.Font = Enum.Font.GothamBold
     l.TextSize = 6
     l.TextXAlignment = Enum.TextXAlignment.Left
@@ -1676,13 +1688,13 @@ end
 local function Tog(p, t, cb, d)
     local c = Instance.new("Frame")
     c.Size = UDim2.new(1, 0, 0, 24)
-    c.BackgroundColor3 = Col.gl
+    c.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     c.BackgroundTransparency = 0.4
     c.BorderSizePixel = 0
     c.Parent = p
     Instance.new("UICorner", c).CornerRadius = UDim.new(0, 5)
     local st = Instance.new("UIStroke", c)
-    st.Color = Col.stk
+    st.Color = Color3.fromRGB(50, 40, 60)
     st.Thickness = 1
     st.Transparency = 0.6
     
@@ -1691,7 +1703,7 @@ local function Tog(p, t, cb, d)
     lb.Position = UDim2.new(0, 8, 0, 0)
     lb.BackgroundTransparency = 1
     lb.Text = t
-    lb.TextColor3 = Col.txt
+    lb.TextColor3 = Color3.fromRGB(235, 230, 245)
     lb.Font = Enum.Font.GothamBold
     lb.TextSize = 8
     lb.TextXAlignment = Enum.TextXAlignment.Left
@@ -1699,7 +1711,7 @@ local function Tog(p, t, cb, d)
     local bg = Instance.new("Frame")
     bg.Size = UDim2.new(0, 28, 0, 14)
     bg.Position = UDim2.new(1, -36, 0.5, -7)
-    bg.BackgroundColor3 = Col.tOff
+    bg.BackgroundColor3 = Color3.fromRGB(30, 25, 40)
     bg.BorderSizePixel = 0
     bg.Parent = c
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
@@ -1707,7 +1719,7 @@ local function Tog(p, t, cb, d)
     local kn = Instance.new("Frame")
     kn.Size = UDim2.new(0, 10, 0, 10)
     kn.Position = UDim2.new(0, 2, 0.5, -5)
-    kn.BackgroundColor3 = Col.kOff
+    kn.BackgroundColor3 = Color3.fromRGB(120, 110, 140)
     kn.BorderSizePixel = 0
     kn.Parent = bg
     Instance.new("UICorner", kn).CornerRadius = UDim.new(1, 0)
@@ -1722,9 +1734,9 @@ local function Tog(p, t, cb, d)
     local en = d or false
     if en then
         kn.Position = UDim2.new(1, -12, 0.5, -5)
-        kn.BackgroundColor3 = Col.kOn
-        bg.BackgroundColor3 = Col.tOn
-        st.Color = Col.acc
+        kn.BackgroundColor3 = Color3.fromRGB(220, 200, 255)
+        bg.BackgroundColor3 = Color3.fromRGB(70, 60, 90)
+        st.Color = Color3.fromRGB(200, 180, 255)
         st.Transparency = 0.1
     end
     
@@ -1732,13 +1744,13 @@ local function Tog(p, t, cb, d)
         en = not en
         TweenService:Create(kn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
             Position = en and UDim2.new(1, -12, 0.5, -5) or UDim2.new(0, 2, 0.5, -5),
-            BackgroundColor3 = en and Col.kOn or Col.kOff
+            BackgroundColor3 = en and Color3.fromRGB(220, 200, 255) or Color3.fromRGB(120, 110, 140)
         }):Play()
         TweenService:Create(bg, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
-            BackgroundColor3 = en and Col.tOn or Col.tOff
+            BackgroundColor3 = en and Color3.fromRGB(70, 60, 90) or Color3.fromRGB(30, 25, 40)
         }):Play()
         TweenService:Create(st, TweenInfo.new(0.18), {
-            Color = en and Col.acc or Col.stk,
+            Color = en and Color3.fromRGB(200, 180, 255) or Color3.fromRGB(50, 40, 60),
             Transparency = en and 0.1 or 0.6
         }):Play()
         cb(en)
@@ -1749,12 +1761,12 @@ end
 local function Sld(p, t, mn, mx, df, cb)
     local c = Instance.new("Frame")
     c.Size = UDim2.new(1, 0, 0, 32)
-    c.BackgroundColor3 = Col.gl
+    c.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     c.BackgroundTransparency = 0.4
     c.BorderSizePixel = 0
     c.Parent = p
     Instance.new("UICorner", c).CornerRadius = UDim.new(0, 5)
-    Instance.new("UIStroke", c).Color = Col.stk
+    Instance.new("UIStroke", c).Color = Color3.fromRGB(50, 40, 60)
     c:FindFirstChildOfClass("UIStroke").Thickness = 1
     c:FindFirstChildOfClass("UIStroke").Transparency = 0.6
     
@@ -1763,7 +1775,7 @@ local function Sld(p, t, mn, mx, df, cb)
     lb.Position = UDim2.new(0, 8, 0, 1)
     lb.BackgroundTransparency = 1
     lb.Text = t
-    lb.TextColor3 = Col.dim
+    lb.TextColor3 = Color3.fromRGB(160, 150, 180)
     lb.Font = Enum.Font.Gotham
     lb.TextSize = 7
     lb.TextXAlignment = Enum.TextXAlignment.Left
@@ -1773,7 +1785,7 @@ local function Sld(p, t, mn, mx, df, cb)
     vl.Position = UDim2.new(0.6, 0, 0, 1)
     vl.BackgroundTransparency = 1
     vl.Text = tostring(df)
-    vl.TextColor3 = Col.accB
+    vl.TextColor3 = Color3.fromRGB(230, 210, 255)
     vl.Font = Enum.Font.GothamBold
     vl.TextSize = 7
     vl.TextXAlignment = Enum.TextXAlignment.Right
@@ -1782,7 +1794,7 @@ local function Sld(p, t, mn, mx, df, cb)
     local tk = Instance.new("Frame")
     tk.Size = UDim2.new(1, -16, 0, 3)
     tk.Position = UDim2.new(0, 8, 0, 20)
-    tk.BackgroundColor3 = Col.trk
+    tk.BackgroundColor3 = Color3.fromRGB(8, 5, 15)
     tk.BorderSizePixel = 0
     tk.ZIndex = 4
     tk.Parent = c
@@ -1790,7 +1802,7 @@ local function Sld(p, t, mn, mx, df, cb)
     
     local fl = Instance.new("Frame")
     fl.Size = UDim2.new((df-mn)/(mx-mn), 0, 1, 0)
-    fl.BackgroundColor3 = Col.acc
+    fl.BackgroundColor3 = Color3.fromRGB(200, 180, 255)
     fl.BorderSizePixel = 0
     fl.ZIndex = 5
     fl.Parent = tk
@@ -1842,13 +1854,13 @@ end
 local function Txt(p, ph, cb)
     local c = Instance.new("Frame")
     c.Size = UDim2.new(1, 0, 0, 22)
-    c.BackgroundColor3 = Col.inp
+    c.BackgroundColor3 = Color3.fromRGB(12, 8, 20)
     c.BackgroundTransparency = 0.4
     c.BorderSizePixel = 0
     c.Parent = p
     Instance.new("UICorner", c).CornerRadius = UDim.new(0, 5)
     local st = Instance.new("UIStroke", c)
-    st.Color = Col.stk
+    st.Color = Color3.fromRGB(50, 40, 60)
     st.Thickness = 1
     st.Transparency = 0.5
     
@@ -1858,7 +1870,7 @@ local function Txt(p, ph, cb)
     t.BackgroundTransparency = 1
     t.Text = ""
     t.PlaceholderText = ph
-    t.PlaceholderColor3 = Col.mut
+    t.PlaceholderColor3 = Color3.fromRGB(100, 90, 120)
     t.TextColor3 = Color3.fromRGB(220,220,230)
     t.Font = Enum.Font.Gotham
     t.TextSize = 8
@@ -1876,16 +1888,16 @@ end
 local function Btn(p, t, cb)
     local b = Instance.new("TextButton")
     b.Size = UDim2.new(1, 0, 0, 24)
-    b.BackgroundColor3 = Col.accD
+    b.BackgroundColor3 = Color3.fromRGB(50, 40, 65)
     b.BackgroundTransparency = 0.4
     b.BorderSizePixel = 0
     b.Text = t
-    b.TextColor3 = Col.accB
+    b.TextColor3 = Color3.fromRGB(230, 210, 255)
     b.Font = Enum.Font.GothamBold
     b.TextSize = 9
     b.Parent = p
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 5)
-    Instance.new("UIStroke", b).Color = Col.stk
+    Instance.new("UIStroke", b).Color = Color3.fromRGB(50, 40, 60)
     b:FindFirstChildOfClass("UIStroke").Thickness = 1
     b:FindFirstChildOfClass("UIStroke").Transparency = 0.3
     b.MouseButton1Click:Connect(function() cb() end)
@@ -1894,12 +1906,12 @@ end
 local function KeyBind(p, t, defaultKey, keyName)
     local c = Instance.new("Frame")
     c.Size = UDim2.new(1, 0, 0, 24)
-    c.BackgroundColor3 = Col.gl
+    c.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     c.BackgroundTransparency = 0.4
     c.BorderSizePixel = 0
     c.Parent = p
     Instance.new("UICorner", c).CornerRadius = UDim.new(0, 5)
-    Instance.new("UIStroke", c).Color = Col.stk
+    Instance.new("UIStroke", c).Color = Color3.fromRGB(50, 40, 60)
     Instance.new("UIStroke", c).Thickness = 1
     Instance.new("UIStroke", c).Transparency = 0.6
     
@@ -1908,7 +1920,7 @@ local function KeyBind(p, t, defaultKey, keyName)
     lb.Position = UDim2.new(0, 8, 0, 0)
     lb.BackgroundTransparency = 1
     lb.Text = t
-    lb.TextColor3 = Col.txt
+    lb.TextColor3 = Color3.fromRGB(235, 230, 245)
     lb.Font = Enum.Font.GothamBold
     lb.TextSize = 8
     lb.TextXAlignment = Enum.TextXAlignment.Left
@@ -1918,7 +1930,7 @@ local function KeyBind(p, t, defaultKey, keyName)
     keyLbl.Position = UDim2.new(0.73, 0, 0, 0)
     keyLbl.BackgroundTransparency = 1
     keyLbl.Text = tostring(defaultKey):gsub("Enum.KeyCode.", "")
-    keyLbl.TextColor3 = Col.acc
+    keyLbl.TextColor3 = Color3.fromRGB(200, 180, 255)
     keyLbl.Font = Enum.Font.GothamBold
     keyLbl.TextSize = 8
     
@@ -2062,12 +2074,12 @@ Sld(P4, "Rainbow Speed", 1, 100, S.RainbowSpeed, function(v) S.RainbowSpeed = v 
 
 local mc = Instance.new("Frame")
 mc.Size = UDim2.new(1, 0, 0, 70)
-mc.BackgroundColor3 = Col.gl
+mc.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
 mc.BackgroundTransparency = 0.4
 mc.BorderSizePixel = 0
 mc.Parent = P4
 Instance.new("UICorner", mc).CornerRadius = UDim.new(0, 5)
-Instance.new("UIStroke", mc).Color = Col.stk
+Instance.new("UIStroke", mc).Color = Color3.fromRGB(50, 40, 60)
 mc:FindFirstChildOfClass("UIStroke").Thickness = 1
 mc:FindFirstChildOfClass("UIStroke").Transparency = 0.6
 
@@ -2088,19 +2100,19 @@ for i, k in ipairs(mK) do
     b.Text = mL[i]
     b.Font = Enum.Font.GothamBold
     b.TextSize = 5
-    b.BackgroundColor3 = k == S.rpMode and Col.acc or Col.tOff
-    b.TextColor3 = k == S.rpMode and Color3.fromRGB(0,0,0) or Col.mut
+    b.BackgroundColor3 = k == S.rpMode and Color3.fromRGB(200, 180, 255) or Color3.fromRGB(30, 25, 40)
+    b.TextColor3 = k == S.rpMode and Color3.fromRGB(0,0,0) or Color3.fromRGB(100, 90, 120)
     b.BorderSizePixel = 0
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 3)
     b.MouseButton1Click:Connect(function()
         S.rpMode = k
         for _, bt in ipairs(mg:GetChildren()) do
             if bt:IsA("TextButton") then
-                bt.BackgroundColor3 = Col.tOff
-                bt.TextColor3 = Col.mut
+                bt.BackgroundColor3 = Color3.fromRGB(30, 25, 40)
+                bt.TextColor3 = Color3.fromRGB(100, 90, 120)
             end
         end
-        b.BackgroundColor3 = Col.acc
+        b.BackgroundColor3 = Color3.fromRGB(200, 180, 255)
         b.TextColor3 = Color3.fromRGB(0,0,0)
         saveSetting("rpMode", k)
     end)
@@ -2233,7 +2245,7 @@ end)
 Sec(P10, "LEGEND HUB")
 local wc = Instance.new("Frame")
 wc.Size = UDim2.new(1, 0, 0, 80)
-wc.BackgroundColor3 = Col.gl
+wc.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
 wc.BackgroundTransparency = 0.4
 wc.BorderSizePixel = 0
 wc.Parent = P10
@@ -2244,17 +2256,25 @@ wnL.Size = UDim2.new(1, -20, 0, 30)
 wnL.Position = UDim2.new(0, 10, 0, 6)
 wnL.BackgroundTransparency = 1
 wnL.Text = "LEGEND HUB"
-wnL.TextColor3 = Col.txt
+wnL.TextColor3 = Color3.fromRGB(235, 230, 245)
 wnL.Font = Enum.Font.GothamBlack
 wnL.TextSize = 24
 wnL.TextXAlignment = Enum.TextXAlignment.Left
+local wnGrad = Instance.new("UIGradient", wnL)
+wnGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
 
 local infoL = Instance.new("TextLabel", wc)
 infoL.Size = UDim2.new(1, -20, 0, 14)
 infoL.Position = UDim2.new(0, 10, 0, 38)
 infoL.BackgroundTransparency = 1
 infoL.Text = "Welcome "..player.DisplayName
-infoL.TextColor3 = Col.dim
+infoL.TextColor3 = Color3.fromRGB(160, 150, 180)
 infoL.Font = Enum.Font.Gotham
 infoL.TextSize = 9
 infoL.TextXAlignment = Enum.TextXAlignment.Left
@@ -2264,7 +2284,7 @@ infoL2.Size = UDim2.new(1, -20, 0, 12)
 infoL2.Position = UDim2.new(0, 10, 0, 54)
 infoL2.BackgroundTransparency = 1
 infoL2.Text = "Q=TP+Grab | H=Grab Spam | Data auto-saves"
-infoL2.TextColor3 = Col.acc
+infoL2.TextColor3 = Color3.fromRGB(200, 180, 255)
 infoL2.Font = Enum.Font.Gotham
 infoL2.TextSize = 7
 infoL2.TextXAlignment = Enum.TextXAlignment.Left
@@ -2274,7 +2294,7 @@ local crL = Instance.new("TextLabel")
 crL.Size = UDim2.new(1, 0, 0, 18)
 crL.BackgroundTransparency = 1
 crL.Text = "Made by LEGEND"
-crL.TextColor3 = Col.accB
+crL.TextColor3 = Color3.fromRGB(230, 210, 255)
 crL.Font = Enum.Font.GothamBold
 crL.TextSize = 8
 crL.Parent = P10
@@ -2295,7 +2315,7 @@ local dataInfo = Instance.new("TextLabel")
 dataInfo.Size = UDim2.new(1, 0, 0, 24)
 dataInfo.BackgroundTransparency = 1
 dataInfo.Text = "All settings auto-save"
-dataInfo.TextColor3 = Col.dim
+dataInfo.TextColor3 = Color3.fromRGB(160, 150, 180)
 dataInfo.TextSize = 7
 dataInfo.Font = Enum.Font.Gotham
 dataInfo.TextWrapped = true
@@ -2328,20 +2348,15 @@ end)
 Sec(P13, "THEMES")
 
 local function applyLegendTheme()
-    Col.bg = Color3.fromRGB(8, 5, 15)
-    Col.glass = Color3.fromRGB(15, 10, 25)
-    Col.gl = Color3.fromRGB(20, 15, 30)
-    Col.acc = Color3.fromRGB(200, 180, 255)
-    Col.accB = Color3.fromRGB(230, 210, 255)
-    Col.accD = Color3.fromRGB(50, 40, 65)
-    Col.txt = Color3.fromRGB(235, 230, 245)
-    Col.dim = Color3.fromRGB(160, 150, 180)
-    Col.mut = Color3.fromRGB(100, 90, 120)
-    Main.BackgroundColor3 = Col.bg
-    TitleBar.BackgroundColor3 = Col.accD
-    Glow.BackgroundColor3 = Col.acc
+    Main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Main.BackgroundTransparency = 0.85
+    Glow.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+    Glow.BackgroundTransparency = 0.7
     BgText.Text = "LEGEND"
-    BgText.TextColor3 = Color3.fromRGB(30, 25, 45)
+    BgText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BgText.TextTransparency = 0.92
+    TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    TitleBar.BackgroundTransparency = 0.5
     CenterTitle.Text = "LEGEND HUB"
     SubTitle.Text = "Made by LEGEND"
     SG.Name = "LEGEND_HUB"
@@ -2351,20 +2366,15 @@ local function applyLegendTheme()
 end
 
 local function applyZicoTheme()
-    Col.bg = Color3.fromRGB(5, 10, 20)
-    Col.glass = Color3.fromRGB(10, 20, 35)
-    Col.gl = Color3.fromRGB(15, 25, 40)
-    Col.acc = Color3.fromRGB(100, 200, 255)
-    Col.accB = Color3.fromRGB(150, 220, 255)
-    Col.accD = Color3.fromRGB(30, 50, 70)
-    Col.txt = Color3.fromRGB(220, 240, 255)
-    Col.dim = Color3.fromRGB(150, 180, 200)
-    Col.mut = Color3.fromRGB(80, 120, 150)
-    Main.BackgroundColor3 = Col.bg
-    TitleBar.BackgroundColor3 = Col.accD
-    Glow.BackgroundColor3 = Col.acc
+    Main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Main.BackgroundTransparency = 0.7
+    Glow.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    Glow.BackgroundTransparency = 0.7
     BgText.Text = "ZICO"
-    BgText.TextColor3 = Color3.fromRGB(20, 35, 50)
+    BgText.TextColor3 = Color3.fromRGB(100, 100, 150)
+    BgText.TextTransparency = 0.9
+    TitleBar.BackgroundColor3 = Color3.fromRGB(200, 220, 240)
+    TitleBar.BackgroundTransparency = 0.4
     CenterTitle.Text = "ZICO HUB"
     SubTitle.Text = "Made by ZICO"
     SG.Name = "ZICO_HUB"
@@ -2400,7 +2410,6 @@ local ztCorner = Instance.new("UICorner", zicoBtn)
 ztCorner.CornerRadius = UDim.new(0, 5)
 zicoBtn.MouseButton1Click:Connect(applyZicoTheme)
 
--- Apply saved theme
 if S.currentTheme == "zico" then
     applyZicoTheme()
 else
