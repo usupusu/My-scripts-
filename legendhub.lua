@@ -16,6 +16,464 @@ local rad = math.rad
 local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
+local WHITELIST = {
+    ["Villain63935"] = true,
+    ["Zicooooi"] = true,
+}
+
+local SEVEN_DAY_KEYS = {}
+for i = 1, 10 do
+    SEVEN_DAY_KEYS["free7daykey" .. i] = 604800
+end
+
+local LIFETIME_KEYS = {
+    "free_vip_key",
+}
+
+local keyData = {}
+pcall(function()
+    if readfile then
+        local data = readfile("lh_keydata.json")
+        if data then
+            keyData = Http:JSONDecode(data)
+        end
+    end
+end)
+
+local function saveKeyData()
+    pcall(function()
+        if writefile then
+            writefile("lh_keydata.json", Http:JSONEncode(keyData))
+        end
+    end)
+end
+
+local function isWhitelisted()
+    return WHITELIST[player.Name] == true
+end
+
+local function generateKey()
+    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    local key = "free24h_"
+    for i = 1, 8 do
+        key = key .. string.sub(chars, random(1, #chars), random(1, #chars))
+    end
+    return key
+end
+
+local function checkKey(inputKey)
+    for _, k in ipairs(LIFETIME_KEYS) do
+        if inputKey == k then
+            return true, "lifetime"
+        end
+    end
+    
+    if SEVEN_DAY_KEYS[inputKey] then
+        if keyData[inputKey] then
+            local elapsed = os.time() - keyData[inputKey].activated
+            local remaining = SEVEN_DAY_KEYS[inputKey] - elapsed
+            if remaining > 0 then
+                return true, "active", remaining
+            else
+                keyData[inputKey].expired = true
+                saveKeyData()
+                return false, "expired"
+            end
+        else
+            keyData[inputKey] = {
+                activated = os.time(),
+                user = player.Name,
+                expired = false
+            }
+            saveKeyData()
+            return true, "active", SEVEN_DAY_KEYS[inputKey]
+        end
+    end
+    
+    if inputKey:match("^free24h_") then
+        if keyData[inputKey] then
+            local elapsed = os.time() - keyData[inputKey].activated
+            local remaining = 86400 - elapsed
+            if remaining > 0 then
+                return true, "active", remaining
+            else
+                keyData[inputKey].expired = true
+                saveKeyData()
+                return false, "expired"
+            end
+        else
+            keyData[inputKey] = {
+                activated = os.time(),
+                user = player.Name,
+                expired = false,
+                generated = true
+            }
+            saveKeyData()
+            return true, "active", 86400
+        end
+    end
+    
+    if keyData[inputKey] and keyData[inputKey].expired then
+        return false, "burned"
+    end
+    
+    return false, "invalid"
+end
+
+if isWhitelisted() then
+    print("✅ Whitelisted user:", player.Name)
+else
+    local function createKeyUI()
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "KeySystem"
+        sg.ResetOnSpawn = false
+        sg.Parent = player:WaitForChild("PlayerGui")
+        
+        local blur = Instance.new("BlurEffect")
+        blur.Size = 10
+        blur.Parent = game.Lighting
+        
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 350, 0, 340)
+        frame.Position = UDim2.new(0.5, -175, 0.5, -170)
+        frame.BackgroundColor3 = Color3.fromRGB(15, 10, 30)
+        frame.BackgroundTransparency = 0.2
+        frame.BorderSizePixel = 0
+        frame.ClipsDescendants = true
+        frame.Parent = sg
+        
+        local glow = Instance.new("Frame")
+        glow.Size = UDim2.new(1, 6, 1, 6)
+        glow.Position = UDim2.new(0, -3, 0, -3)
+        glow.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
+        glow.BackgroundTransparency = 0.6
+        glow.BorderSizePixel = 0
+        glow.Parent = frame
+        local glowCorner = Instance.new("UICorner", glow)
+        glowCorner.CornerRadius = UDim.new(0, 18)
+        
+        local corner = Instance.new("UICorner", frame)
+        corner.CornerRadius = UDim.new(0, 14)
+        
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, 0, 0, 35)
+        title.Position = UDim2.new(0, 0, 0, 8)
+        title.BackgroundTransparency = 1
+        title.Text = "✦ LEGEND HUB ✦"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextScaled = true
+        title.Font = Enum.Font.GothamBlack
+        title.Parent = frame
+        
+        local grad = Instance.new("UIGradient", title)
+        grad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 50, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 150, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 50, 255)),
+        })
+        
+        local subtitle = Instance.new("TextLabel")
+        subtitle.Size = UDim2.new(1, 0, 0, 18)
+        subtitle.Position = UDim2.new(0, 0, 0, 42)
+        subtitle.BackgroundTransparency = 1
+        subtitle.Text = "Enter key or generate one"
+        subtitle.TextColor3 = Color3.fromRGB(160, 150, 190)
+        subtitle.TextScaled = true
+        subtitle.Font = Enum.Font.Gotham
+        subtitle.Parent = frame
+        
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.new(0.8, 0, 0, 32)
+        box.Position = UDim2.new(0.1, 0, 0, 68)
+        box.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+        box.BackgroundTransparency = 0.3
+        box.TextColor3 = Color3.fromRGB(255, 255, 255)
+        box.PlaceholderText = "🔑 Paste key here..."
+        box.PlaceholderColor3 = Color3.fromRGB(100, 90, 130)
+        box.Font = Enum.Font.Gotham
+        box.TextScaled = true
+        box.BorderSizePixel = 0
+        box.ClipsDescendants = true
+        box.Parent = frame
+        local boxCorner = Instance.new("UICorner", box)
+        boxCorner.CornerRadius = UDim.new(0, 8)
+        
+        local boxGlow = Instance.new("Frame")
+        boxGlow.Size = UDim2.new(1, 2, 1, 2)
+        boxGlow.Position = UDim2.new(0, -1, 0, -1)
+        boxGlow.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
+        boxGlow.BackgroundTransparency = 0.8
+        boxGlow.BorderSizePixel = 0
+        boxGlow.Parent = box
+        local boxGlowCorner = Instance.new("UICorner", boxGlow)
+        boxGlowCorner.CornerRadius = UDim.new(0, 9)
+        
+        local genBox = Instance.new("TextBox")
+        genBox.Size = UDim2.new(0.8, 0, 0, 32)
+        genBox.Position = UDim2.new(0.1, 0, 0, 108)
+        genBox.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+        genBox.BackgroundTransparency = 0.3
+        genBox.TextColor3 = Color3.fromRGB(100, 200, 255)
+        genBox.PlaceholderText = "🔄 Generated key..."
+        genBox.PlaceholderColor3 = Color3.fromRGB(60, 60, 80)
+        genBox.Font = Enum.Font.Gotham
+        genBox.TextScaled = true
+        genBox.BorderSizePixel = 0
+        genBox.ClipsDescendants = true
+        genBox.Active = false
+        genBox.Parent = frame
+        local genCorner = Instance.new("UICorner", genBox)
+        genCorner.CornerRadius = UDim.new(0, 8)
+        
+        local genGlow = Instance.new("Frame")
+        genGlow.Size = UDim2.new(1, 2, 1, 2)
+        genGlow.Position = UDim2.new(0, -1, 0, -1)
+        genGlow.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+        genGlow.BackgroundTransparency = 0.8
+        genGlow.BorderSizePixel = 0
+        genGlow.Parent = genBox
+        local genGlowCorner = Instance.new("UICorner", genGlow)
+        genGlowCorner.CornerRadius = UDim.new(0, 9)
+        
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0.25, 0, 0, 22)
+        copyBtn.Position = UDim2.new(0.37, 0, 0, 148)
+        copyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+        copyBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+        copyBtn.Text = "📋 COPY"
+        copyBtn.Font = Enum.Font.GothamBold
+        copyBtn.TextScaled = true
+        copyBtn.BorderSizePixel = 0
+        copyBtn.Visible = false
+        copyBtn.Parent = frame
+        local copyCorner = Instance.new("UICorner", copyBtn)
+        copyCorner.CornerRadius = UDim.new(0, 6)
+        
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.4, 0, 0, 32)
+        btn.Position = UDim2.new(0.05, 0, 0, 185)
+        btn.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Text = "▶ UNLOCK"
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.BorderSizePixel = 0
+        btn.Parent = frame
+        local btnCorner = Instance.new("UICorner", btn)
+        btnCorner.CornerRadius = UDim.new(0, 10)
+        
+        local genBtn = Instance.new("TextButton")
+        genBtn.Size = UDim2.new(0.4, 0, 0, 32)
+        genBtn.Position = UDim2.new(0.55, 0, 0, 185)
+        genBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+        genBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+        genBtn.Text = "🎲 GENERATE"
+        genBtn.Font = Enum.Font.GothamBold
+        genBtn.TextScaled = true
+        genBtn.BorderSizePixel = 0
+        genBtn.Parent = frame
+        local genBtnCorner = Instance.new("UICorner", genBtn)
+        genBtnCorner.CornerRadius = UDim.new(0, 10)
+        
+        local timerLabel = Instance.new("TextLabel")
+        timerLabel.Size = UDim2.new(1, 0, 0, 25)
+        timerLabel.Position = UDim2.new(0, 0, 0, 228)
+        timerLabel.BackgroundTransparency = 1
+        timerLabel.Text = ""
+        timerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        timerLabel.TextScaled = true
+        timerLabel.Font = Enum.Font.Gotham
+        timerLabel.Parent = frame
+        
+        local status = Instance.new("TextLabel")
+        status.Size = UDim2.new(1, 0, 0, 22)
+        status.Position = UDim2.new(0, 0, 0, 255)
+        status.BackgroundTransparency = 1
+        status.Text = ""
+        status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        status.TextScaled = true
+        status.Font = Enum.Font.Gotham
+        status.Parent = frame
+        
+        local timeRemain = Instance.new("TextLabel")
+        timeRemain.Size = UDim2.new(1, 0, 0, 20)
+        timeRemain.Position = UDim2.new(0, 0, 0, 280)
+        timeRemain.BackgroundTransparency = 1
+        timeRemain.Text = ""
+        timeRemain.TextColor3 = Color3.fromRGB(100, 200, 255)
+        timeRemain.TextScaled = true
+        timeRemain.Font = Enum.Font.Gotham
+        timeRemain.Parent = frame
+        
+        local close = Instance.new("TextButton")
+        close.Size = UDim2.new(0, 24, 0, 24)
+        close.Position = UDim2.new(1, -34, 0, 8)
+        close.BackgroundColor3 = Color3.fromRGB(100, 30, 40)
+        close.BackgroundTransparency = 0.5
+        close.Text = "✕"
+        close.TextColor3 = Color3.fromRGB(255, 200, 200)
+        close.Font = Enum.Font.GothamBold
+        close.TextSize = 12
+        close.BorderSizePixel = 0
+        close.Parent = frame
+        local closeCorner = Instance.new("UICorner", close)
+        closeCorner.CornerRadius = UDim.new(0, 6)
+        close.MouseButton1Click:Connect(function()
+            sg:Destroy()
+            blur:Destroy()
+        end)
+        
+        local function updateTimer(remaining)
+            if remaining then
+                local hours = math.floor(remaining / 3600)
+                local mins = math.floor((remaining % 3600) / 60)
+                local secs = math.floor(remaining % 60)
+                if hours > 0 then
+                    timeRemain.Text = string.format("⏰ %dh %dm %ds", hours, mins, secs)
+                elseif mins > 0 then
+                    timeRemain.Text = string.format("⏰ %dm %ds", mins, secs)
+                else
+                    timeRemain.Text = string.format("⏰ %ds", secs)
+                end
+                timeRemain.TextColor3 = Color3.fromRGB(100, 200, 255)
+            else
+                timeRemain.Text = ""
+            end
+        end
+        
+        local timerThread
+        local function startTimer(remaining)
+            if timerThread then task.cancel(timerThread) end
+            timerThread = spawn(function()
+                while remaining > 0 do
+                    updateTimer(remaining)
+                    wait(1)
+                    remaining = remaining - 1
+                end
+                updateTimer(nil)
+            end)
+        end
+        
+        local generatedKey = ""
+        local function startKeyGeneration()
+            generatedKey = generateKey()
+            genBox.Text = generatedKey
+            genBox.PlaceholderText = ""
+            copyBtn.Visible = true
+            
+            genBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 40)
+            genBtn.Text = "⏳ 60s"
+            genBtn.TextColor3 = Color3.fromRGB(200, 150, 150)
+            genBtn.Active = false
+            
+            timerLabel.Text = "⏳ Generating... 60s"
+            timerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+            status.Text = ""
+            copyBtn.Visible = false
+            
+            local genThread = spawn(function()
+                for i = 60, 0, -1 do
+                    if i > 0 then
+                        genBtn.Text = string.format("⏳ %ds", i)
+                        timerLabel.Text = string.format("⏳ Please wait %ds...", i)
+                    else
+                        timerLabel.Text = "✅ Key generated! Click UNLOCK."
+                        timerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                        genBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+                        genBtn.Text = "🎲 GENERATE"
+                        genBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+                        genBtn.Active = true
+                        status.Text = "✅ Key generated! Click UNLOCK."
+                        status.TextColor3 = Color3.fromRGB(100, 255, 100)
+                        copyBtn.Visible = true
+                    end
+                    wait(1)
+                end
+            end)
+        end
+        
+        copyBtn.MouseButton1Click:Connect(function()
+            if generatedKey ~= "" and genBox.Text ~= "" then
+                setclipboard(generatedKey)
+                status.Text = "📋 Key copied!"
+                status.TextColor3 = Color3.fromRGB(100, 200, 255)
+                timerLabel.Text = "📋 Copied! Paste in the box above."
+                timerLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+            end
+        end)
+        
+        genBtn.MouseButton1Click:Connect(function()
+            if genBtn.Active == false then return end
+            startKeyGeneration()
+        end)
+        
+        btn.MouseButton1Click:Connect(function()
+            local entered = box.Text
+            if entered == "" then
+                status.Text = "❌ Please enter a key!"
+                status.TextColor3 = Color3.fromRGB(255, 100, 100)
+                return
+            end
+            
+            local valid, keyType, remaining = checkKey(entered)
+            
+            if valid then
+                if keyType == "lifetime" then
+                    status.Text = "✅ PERMANENT ACCESS!"
+                    status.TextColor3 = Color3.fromRGB(100, 255, 100)
+                    timeRemain.Text = "👑 VIP - Never Expires!"
+                    timeRemain.TextColor3 = Color3.fromRGB(255, 215, 0)
+                else
+                    status.Text = "✅ ACCESS GRANTED!"
+                    status.TextColor3 = Color3.fromRGB(100, 255, 100)
+                    startTimer(remaining)
+                end
+                
+                for i = 1, 3 do
+                    btn.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+                    wait(0.1)
+                    btn.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
+                    wait(0.1)
+                end
+                
+                wait(0.5)
+                sg:Destroy()
+                blur:Destroy()
+            else
+                if keyType == "expired" or keyType == "burned" then
+                    status.Text = "❌ Key EXPIRED! Generate a new one."
+                    status.TextColor3 = Color3.fromRGB(255, 50, 50)
+                    timeRemain.Text = "💀 Key is BURNED"
+                    timeRemain.TextColor3 = Color3.fromRGB(255, 50, 50)
+                else
+                    status.Text = "❌ Invalid key! Try again."
+                    status.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+                box.Text = ""
+                box.PlaceholderText = "Try again..."
+                
+                local origPos = frame.Position
+                for i = 1, 5 do
+                    frame.Position = UDim2.new(0.5, -175 + (i%2 == 0 and 8 or -8), 0.5, -170)
+                    wait(0.05)
+                end
+                frame.Position = origPos
+            end
+        end)
+        
+        box.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                btn.MouseButton1Click:Fire()
+            end
+        end)
+        
+        return sg
+    end
+    
+    createKeyUI()
+    return
+end
+
 local SAVE = _G.LH_Saves or {}
 _G.LH_Saves = SAVE
 SAVE.kaTargets = SAVE.kaTargets or ""
@@ -2453,8 +2911,3 @@ if player.Character and S.AntiRag then
 end
 
 Notif("LEGEND HUB", "Loaded! Made by LEGEND", "ok")
-
-print("LEGEND HUB LOADED")
-print("Made by LEGEND")
-print("Data auto-saves to: lh_data.json")
-print("Mobile friendly")
