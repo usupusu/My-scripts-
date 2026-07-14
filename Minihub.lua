@@ -45,16 +45,9 @@ local function Set(k, v) SAVE[k] = v; SaveData() end
 LoadData()
 
 local colorPalettes = {
-    {name="Rainbow", colors={Color3.fromRGB(255,0,0),Color3.fromRGB(255,127,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,255),Color3.fromRGB(75,0,130),Color3.fromRGB(148,0,211)}},
-    {name="Neon", colors={Color3.fromRGB(255,0,0),Color3.fromRGB(255,50,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,255,255),Color3.fromRGB(0,100,255),Color3.fromRGB(255,0,255)}},
-    {name="B&W Ultra", colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255)}},
-    {name="Pastel", colors={Color3.fromRGB(255,200,200),Color3.fromRGB(255,220,180),Color3.fromRGB(255,255,200),Color3.fromRGB(200,255,200),Color3.fromRGB(200,220,255),Color3.fromRGB(220,200,255),Color3.fromRGB(255,200,240)}},
-    {name="Red to White", colors={Color3.fromRGB(255,0,0),Color3.fromRGB(255,50,50),Color3.fromRGB(255,100,100),Color3.fromRGB(255,150,150),Color3.fromRGB(255,200,200),Color3.fromRGB(255,220,220),Color3.fromRGB(255,240,240),Color3.fromRGB(255,255,255)}},
-    {name="Sky", colors={Color3.fromRGB(135,206,235),Color3.fromRGB(0,191,255),Color3.fromRGB(135,206,250),Color3.fromRGB(70,130,180),Color3.fromRGB(176,224,230),Color3.fromRGB(0,255,255),Color3.fromRGB(127,255,212)}},
-    {name="Dark", colors={Color3.fromRGB(25,25,25),Color3.fromRGB(40,40,40),Color3.fromRGB(60,60,70),Color3.fromRGB(80,80,90),Color3.fromRGB(30,30,40),Color3.fromRGB(50,50,60),Color3.fromRGB(20,20,30)}},
-    {name="Light", colors={Color3.fromRGB(240,240,240),Color3.fromRGB(245,245,245),Color3.fromRGB(250,250,250),Color3.fromRGB(252,252,252),Color3.fromRGB(254,254,254),Color3.fromRGB(255,255,255)}},
-    {name="Blood", colors={Color3.fromRGB(40,0,0),Color3.fromRGB(60,0,0),Color3.fromRGB(80,0,0),Color3.fromRGB(100,0,0),Color3.fromRGB(120,0,0),Color3.fromRGB(160,0,0),Color3.fromRGB(200,0,0)}},
-    {name="Fire", colors={Color3.fromRGB(255,0,0),Color3.fromRGB(255,50,0),Color3.fromRGB(255,100,0),Color3.fromRGB(255,150,0),Color3.fromRGB(255,200,0),Color3.fromRGB(255,100,50),Color3.fromRGB(200,50,0)}}
+    {name="🔴🔵 R&B Ultra", bg=Color3.fromRGB(255,0,0), colors={Color3.fromRGB(255,0,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(0,0,255)}},
+    {name="🟢⚫ G&B Ultra", bg=Color3.fromRGB(0,255,0), colors={Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,0)}},
+    {name="⚫ B&W Ultra", bg=Color3.fromRGB(0,0,0), colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255)}},
 }
 
 local bioRemote = nil
@@ -70,22 +63,14 @@ local function findRemotes()
     for _, child in pairs(ReplicatedStorage:GetDescendants()) do
         if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
             local name = child.Name
-            if name == "UpdateBio" or name == "SetBio" then
-                bioRemote = child
-            elseif name == "UpdateBioColor" or name == "SetBioColor" then
-                bioColorRemote = child
-            elseif name == "UpdateRPColor" or name == "SetNameColor" then
-                colorRemote = child
-            elseif name == "UpdateRPName" or name == "SetName" then
-                nameRemote = child
-            elseif name:lower() == "hit" or name:lower() == "punch" then
-                HitRF = child
-            elseif name:lower() == "punchdo" then
-                PunchRF = child
-            elseif name:lower() == "block" then
-                BlockRF = child
-            elseif name:lower() == "grab" then
-                GrabRF = child
+            if name == "UpdateBio" or name == "SetBio" then bioRemote = child
+            elseif name == "UpdateBioColor" or name == "SetBioColor" then bioColorRemote = child
+            elseif name == "UpdateRPColor" or name == "SetNameColor" then colorRemote = child
+            elseif name == "UpdateRPName" or name == "SetName" then nameRemote = child
+            elseif name:lower() == "hit" or name:lower() == "punch" then HitRF = child
+            elseif name:lower() == "punchdo" then PunchRF = child
+            elseif name:lower() == "block" then BlockRF = child
+            elseif name:lower() == "grab" then GrabRF = child
             end
         end
     end
@@ -113,9 +98,7 @@ local function parsePhrases(input)
     if input == "" then return result end
     for phrase in input:gmatch("[^,]+") do
         local trimmed = phrase:match("^%s*(.-)%s*$")
-        if trimmed ~= "" then
-            table.insert(result, trimmed)
-        end
+        if trimmed ~= "" then table.insert(result, trimmed) end
     end
     return result
 end
@@ -123,17 +106,13 @@ end
 local function updateBioList()
     bioLines = {}
     local phrases = Get("BioPhrases", "")
-    if phrases ~= "" then
-        bioLines = parsePhrases(phrases)
-    end
+    if phrases ~= "" then bioLines = parsePhrases(phrases) end
 end
 
 local function updateBlinkList()
     blinkLines = {}
     local phrases = Get("BlinkPhrases", "")
-    if phrases ~= "" then
-        blinkLines = parsePhrases(phrases)
-    end
+    if phrases ~= "" then blinkLines = parsePhrases(phrases) end
 end
 
 local function startBioType()
@@ -170,11 +149,7 @@ local function startBioBlink()
                 local speed = Get("BlinkSpeed", 5) / 10
                 for _, phrase in ipairs(blinkLines) do
                     if not blinkLoopRunning or not isActive then break end
-                    if visible then
-                        applyBio(phrase)
-                    else
-                        applyBio("")
-                    end
+                    if visible then applyBio(phrase) else applyBio("") end
                     visible = not visible
                     task.wait(speed)
                 end
@@ -218,12 +193,6 @@ local function startColorCycle()
     end
 end
 
--- KILL AURA LOGIC
-local kaOn = false
-local kaConn = nil
-local kaLast = 0
-local hitCounter = 0
-
 local function parseList(str)
     local t = {}
     if str == "" then return t end
@@ -262,6 +231,11 @@ local function HitRemoteInvoke(hum, px, py, pz)
     end)
 end
 
+local kaOn = false
+local kaConn = nil
+local kaLast = 0
+local hitCounter = 0
+
 local function startKA()
     if kaConn then kaConn:Disconnect() end
     kaConn = RunService.Heartbeat:Connect(function()
@@ -295,9 +269,7 @@ local function startKA()
             local hrp = c:FindFirstChild("HumanoidRootPart")
             if hu and hrp and hu.Health > 0 then
                 local d = (hrp.Position - myHRP.Position).Magnitude
-                if d <= range then
-                    table.insert(hitList, {hu = hu, dist = d})
-                end
+                if d <= range then table.insert(hitList, {hu = hu, dist = d}) end
             end
         end
         
@@ -316,9 +288,7 @@ local function stopKA()
     if kaConn then kaConn:Disconnect(); kaConn = nil end
 end
 
--- SPAM GRAB LOGIC
 local grabConn = nil
-
 local function startGrab()
     if grabConn then grabConn:Disconnect() end
     grabConn = RunService.Heartbeat:Connect(function()
@@ -335,11 +305,8 @@ local function startGrab()
             if not isTarget(p.Name, targetList) and not isTarget(p.DisplayName, targetList) then continue end
             if p.Character then
                 pcall(function()
-                    if GrabRF:IsA("RemoteFunction") then
-                        GrabRF:InvokeServer(p)
-                    elseif GrabRF:IsA("RemoteEvent") then
-                        GrabRF:FireServer(p)
-                    end
+                    if GrabRF:IsA("RemoteFunction") then GrabRF:InvokeServer(p)
+                    elseif GrabRF:IsA("RemoteEvent") then GrabRF:FireServer(p) end
                 end)
                 break
             end
@@ -352,9 +319,7 @@ local function stopGrab()
     if grabConn then grabConn:Disconnect(); grabConn = nil end
 end
 
--- HITBOX LOGIC
 local hitboxConn = nil
-
 local function startHitbox()
     if hitboxConn then hitboxConn:Disconnect() end
     hitboxConn = RunService.Heartbeat:Connect(function()
@@ -363,9 +328,7 @@ local function startHitbox()
         if not mc then return end
         local size = Get("HitboxSize", 10)
         for _, v in mc:GetDescendants() do
-            if v:IsA("BasePart") then
-                pcall(function() v.Size = Vector3.new(size, size, size) end)
-            end
+            if v:IsA("BasePart") then pcall(function() v.Size = Vector3.new(size, size, size) end) end
         end
     end)
 end
@@ -405,23 +368,9 @@ local function startAll()
         coroutine.resume(nameThread)
     end
     
-    if Get("KillAura", false) then
-        startKA()
-    else
-        stopKA()
-    end
-    
-    if Get("SpamGrab", false) then
-        startGrab()
-    else
-        stopGrab()
-    end
-    
-    if Get("Hitbox", false) then
-        startHitbox()
-    else
-        stopHitbox()
-    end
+    if Get("KillAura", false) then startKA() else stopKA() end
+    if Get("SpamGrab", false) then startGrab() else stopGrab() end
+    if Get("Hitbox", false) then startHitbox() else stopHitbox() end
 end
 
 local function stopAll()
@@ -440,8 +389,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = CoreGui
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 350)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -175)
+mainFrame.Size = UDim2.new(0, 280, 0, 380)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -190)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 0
@@ -520,17 +469,13 @@ minimizeBtn.MouseButton1Click:Connect(function()
         mainFrame.Size = UDim2.new(0, 160, 0, 32)
         minimizeBtn.Text = "+"
         for _, child in pairs(mainFrame:GetChildren()) do
-            if child ~= titleBar and child ~= glowBorder then
-                child.Visible = false
-            end
+            if child ~= titleBar and child ~= glowBorder then child.Visible = false end
         end
     else
-        mainFrame.Size = UDim2.new(0, 280, 0, 350)
+        mainFrame.Size = UDim2.new(0, 280, 0, 380)
         minimizeBtn.Text = "−"
         for _, child in pairs(mainFrame:GetChildren()) do
-            if child ~= titleBar and child ~= glowBorder then
-                child.Visible = true
-            end
+            if child ~= titleBar and child ~= glowBorder then child.Visible = true end
         end
     end
 end)
@@ -595,7 +540,7 @@ end
 
 local function createSection(parent, title)
     local f = Instance.new("Frame")
-    f.Size = UDim2.new(1, 0, 0, 15)
+    f.Size = UDim2.new(1, 0, 0, 18)
     f.BackgroundColor3 = Color3.fromRGB(220, 220, 240)
     f.BackgroundTransparency = 0.3
     f.BorderSizePixel = 0
@@ -607,7 +552,7 @@ local function createSection(parent, title)
     l.BackgroundTransparency = 1
     l.Text = title:upper()
     l.TextColor3 = Color3.fromRGB(80, 80, 150)
-    l.TextSize = 6
+    l.TextSize = 7
     l.Font = Enum.Font.GothamBold
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.Parent = f
@@ -616,7 +561,7 @@ end
 
 local function createToggle(parent, label, key, default)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 22)
+    frame.Size = UDim2.new(1, 0, 0, 24)
     frame.BackgroundColor3 = Color3.fromRGB(240, 240, 250)
     frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
@@ -630,18 +575,18 @@ local function createToggle(parent, label, key, default)
     lb.BackgroundTransparency = 1
     lb.Text = label
     lb.TextColor3 = Color3.fromRGB(0, 0, 0)
-    lb.TextSize = 8
+    lb.TextSize = 9
     lb.Font = Enum.Font.Gotham
     lb.TextXAlignment = Enum.TextXAlignment.Left
     lb.Parent = frame
     
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 38, 0, 16)
-    btn.Position = UDim2.new(1, -42, 0.5, -8)
+    btn.Size = UDim2.new(0, 40, 0, 18)
+    btn.Position = UDim2.new(1, -44, 0.5, -9)
     btn.BackgroundColor3 = state and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(200, 200, 200)
     btn.Text = state and "ON" or "OFF"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 7
+    btn.TextSize = 8
     btn.Font = Enum.Font.GothamBold
     btn.BorderSizePixel = 0
     btn.Parent = frame
@@ -661,7 +606,7 @@ end
 
 local function createSlider(parent, label, key, min, max, default)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 28)
+    frame.Size = UDim2.new(1, 0, 0, 30)
     frame.BackgroundColor3 = Color3.fromRGB(240, 240, 250)
     frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
@@ -670,18 +615,18 @@ local function createSlider(parent, label, key, min, max, default)
     
     local val = Get(key, default)
     local lb = Instance.new("TextLabel")
-    lb.Size = UDim2.new(0.5, 0, 0, 12)
+    lb.Size = UDim2.new(0.5, 0, 0, 14)
     lb.Position = UDim2.new(0, 6, 0, 1)
     lb.BackgroundTransparency = 1
     lb.Text = label .. ": " .. tostring(val)
     lb.TextColor3 = Color3.fromRGB(80, 80, 100)
-    lb.TextSize = 7
+    lb.TextSize = 8
     lb.Font = Enum.Font.Gotham
     lb.TextXAlignment = Enum.TextXAlignment.Left
     lb.Parent = frame
     
     local tk = Instance.new("Frame")
-    tk.Size = UDim2.new(0.7, 0, 0, 3)
+    tk.Size = UDim2.new(0.7, 0, 0, 4)
     tk.Position = UDim2.new(0.1, 0, 0.7, 0)
     tk.BackgroundColor3 = Color3.fromRGB(200, 200, 220)
     tk.BorderSizePixel = 0
@@ -697,12 +642,12 @@ local function createSlider(parent, label, key, min, max, default)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
     
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 10, 0, 10)
-    knob.Position = UDim2.new(pct, -5, 0.5, -5)
+    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.Position = UDim2.new(pct, -6, 0.5, -6)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.BorderSizePixel = 0
     knob.Parent = tk
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 5)
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 6)
     
     local dragging = false
     local function update(pos)
@@ -711,7 +656,7 @@ local function createSlider(parent, label, key, min, max, default)
         local p2 = math.clamp((pos.X - tk.AbsolutePosition.X) / aw, 0, 1)
         local v = math.floor(min + p2 * (max - min))
         fill.Size = UDim2.new(p2, 0, 1, 0)
-        knob.Position = UDim2.new(p2, -5, 0.5, -5)
+        knob.Position = UDim2.new(p2, -6, 0.5, -6)
         lb.Text = label .. ": " .. tostring(v)
         Set(key, v)
     end
@@ -742,7 +687,7 @@ end
 
 local function createTextBox(parent, label, key, placeholder)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 22)
+    frame.Size = UDim2.new(1, 0, 0, 24)
     frame.BackgroundColor3 = Color3.fromRGB(240, 240, 250)
     frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
@@ -755,7 +700,7 @@ local function createTextBox(parent, label, key, placeholder)
     lb.BackgroundTransparency = 1
     lb.Text = label
     lb.TextColor3 = Color3.fromRGB(80, 80, 100)
-    lb.TextSize = 7
+    lb.TextSize = 8
     lb.Font = Enum.Font.Gotham
     lb.TextXAlignment = Enum.TextXAlignment.Left
     lb.Parent = frame
@@ -767,7 +712,7 @@ local function createTextBox(parent, label, key, placeholder)
     box.Text = Get(key, "")
     box.PlaceholderText = placeholder
     box.TextColor3 = Color3.fromRGB(0, 0, 0)
-    box.TextSize = 8
+    box.TextSize = 9
     box.Font = Enum.Font.Gotham
     box.ClearTextOnFocus = false
     box.Parent = frame
@@ -860,22 +805,22 @@ createSlider(visualPanel, "Color Speed", "ColorSpeed", 1, 500, 20)
 
 createSection(visualPanel, "COLOR PRESETS")
 local colorFrame = Instance.new("Frame")
-colorFrame.Size = UDim2.new(1, 0, 0, 60)
+colorFrame.Size = UDim2.new(1, 0, 0, 90)
 colorFrame.BackgroundTransparency = 1
 colorFrame.Parent = visualPanel
 
 for i = 1, #colorPalettes do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.23, 0, 0, 16)
-    btn.Position = UDim2.new((i - 1) % 3 * 0.26, 0, math.floor((i - 1) / 3) * 20, 0)
-    btn.BackgroundColor3 = colorPalettes[i].colors[1]
+    btn.Size = UDim2.new(0.30, 0, 0, 24)
+    btn.Position = UDim2.new((i - 1) % 3 * 0.34, 0, math.floor((i - 1) / 3) * 28, 0)
+    btn.BackgroundColor3 = colorPalettes[i].bg
     btn.Text = colorPalettes[i].name
-    btn.TextColor3 = (i == 1 or i == 4 or i == 7 or i == 9) and Color3.fromRGB(255,255,255) or Color3.fromRGB(0,0,0)
-    btn.TextSize = 5
+    btn.TextColor3 = (i == 1 or i == 3) and Color3.fromRGB(255,255,255) or Color3.fromRGB(0,0,0)
+    btn.TextSize = 7
     btn.Font = Enum.Font.GothamBold
     btn.BorderSizePixel = 0
     btn.Parent = colorFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(function()
         colorPreset = i
         Set("ColorPreset", i)
@@ -911,8 +856,7 @@ local headlessBtn = createButton(ghostPanel, "Headless", function()
     pcall(function()
         local args = {{["Property"] = "Head", ["AssetId"] = 15093053680}}
         local remote = ReplicatedStorage:FindFirstChild("CatalogOnApplyToRealHumanoid", true)
-        if remote then
-            remote:FireServer(unpack(args))
+        if remote then remote:FireServer(unpack(args))
         else
             for _, v in pairs(ReplicatedStorage:GetDescendants()) do
                 if v:IsA("RemoteFunction") or v:IsA("RemoteEvent") then
@@ -931,9 +875,7 @@ player.CharacterAdded:Connect(function()
     pcall(function()
         local args = {{["Property"] = "Head", ["AssetId"] = 15093053680}}
         local remote = ReplicatedStorage:FindFirstChild("CatalogOnApplyToRealHumanoid", true)
-        if remote then
-            remote:FireServer(unpack(args))
-        end
+        if remote then remote:FireServer(unpack(args)) end
     end)
 end)
 
@@ -945,10 +887,7 @@ RunService.Heartbeat:Connect(function()
         if ch then
             local hrp = ch:FindFirstChild("HumanoidRootPart")
             if hrp then
-                if not safePos then
-                    safePos = hrp.Position
-                    safeOrig = hrp.CFrame
-                end
+                if not safePos then safePos = hrp.Position; safeOrig = hrp.CFrame end
                 hrp.CFrame = CFrame.new(safePos.X, 150, safePos.Z)
                 hrp.AssemblyLinearVelocity = Vector3.zero
             end
@@ -958,13 +897,9 @@ RunService.Heartbeat:Connect(function()
             local ch = player.Character
             if ch then
                 local hrp = ch:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CFrame = safeOrig
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                end
+                if hrp then hrp.CFrame = safeOrig; hrp.AssemblyLinearVelocity = Vector3.zero end
             end
-            safePos = nil
-            safeOrig = nil
+            safePos = nil; safeOrig = nil
         end
     end
 end)
@@ -981,11 +916,8 @@ RunService.Heartbeat:Connect(function()
                 hu.PlatformStand = false
             end
             for _, o in pairs(ch:GetDescendants()) do
-                if (o:IsA("BaseConstraint") or o:IsA("Attachment")) and o.Name:lower():find("ragdoll") then
-                    o:Destroy()
-                elseif o:IsA("Motor6D") then
-                    o.Enabled = true
-                end
+                if (o:IsA("BaseConstraint") or o:IsA("Attachment")) and o.Name:lower():find("ragdoll") then o:Destroy()
+                elseif o:IsA("Motor6D") then o.Enabled = true end
             end
         end
     end
@@ -997,12 +929,8 @@ RunService.Heartbeat:Connect(function()
         if ch then
             local hrp = ch:FindFirstChild("HumanoidRootPart")
             if hrp then
-                if hrp.AssemblyAngularVelocity.Magnitude > 15 then
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                end
-                if hrp.AssemblyLinearVelocity.Magnitude > 150 then
-                    hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity * 0.75
-                end
+                if hrp.AssemblyAngularVelocity.Magnitude > 15 then hrp.AssemblyAngularVelocity = Vector3.zero end
+                if hrp.AssemblyLinearVelocity.Magnitude > 150 then hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity * 0.75 end
             end
         end
     end
@@ -1028,9 +956,7 @@ local function startGhost()
             if v:IsA("BasePart") then
                 v.LocalTransparencyModifier = 1
                 if v.Name == "HumanoidRootPart" then v.Transparency = 1 end
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            end
+            elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1 end
         end
     end)
 end
@@ -1043,20 +969,14 @@ local function stopGhost()
             if v:IsA("BasePart") then
                 v.LocalTransparencyModifier = 0
                 if v.Name == "HumanoidRootPart" then v.Transparency = 1 end
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 0
-            end
+            elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 0 end
         end
     end
 end
 
 task.spawn(function()
     while task.wait(0.5) do
-        if Get("GhostMode", false) then
-            startGhost()
-        else
-            stopGhost()
-        end
+        if Get("GhostMode", false) then startGhost() else stopGhost() end
     end
 end)
 
@@ -1073,5 +993,4 @@ startAll()
 
 print("⚡ MINI HUB LOADED")
 print("🔑 L = Hide/Show GUI")
-print("👑 LEGEND ON TOP 👑")
-print("❤️❤️❤️❤️❤️❤️❤️❤️❤️")
+print("❤️ ❤️ ❤️ ❤️ ❤️ ❤️ ")
