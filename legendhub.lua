@@ -1,101 +1,5 @@
 local Players=game:GetService("Players")local RunService=game:GetService("RunService")local UserInputService=game:GetService("UserInputService")local TweenService=game:GetService("TweenService")local RS=game:GetService("ReplicatedStorage")local CoreGui=game:GetService("CoreGui")local Lighting=game:GetService("Lighting")local Http=game:GetService("HttpService")local VirtualUser=game:GetService("VirtualUser")local player=Players.LocalPlayer local wait=task.wait local spawn=task.spawn local insert=table.insert local random=math.random local rad=math.rad local camera=workspace.CurrentCamera local mouse=player:GetMouse()
 
-local function d(t)local r={}for i=1,#t do r[i]=string.char(t[i])end return table.concat(r)end
-local function g()local k={}local p1={102,114,101,101}local p2={55,100,97,121,107,101,121}local p3={102,114,101,101,95,118,105,112,95,107,101,121}local base=d(p1)..d(p2)for i=1,10 do k[base..i]=604800 end k[d(p3)]="lifetime"return k end
-local WHITELIST={["Villain63935"]=true,["Zicooooi"]=true}
-local keyData={}pcall(function()if readfile then local data=readfile("lh_keydata.json")if data then keyData=Http:JSONDecode(data)end end end)
-local function saveKeyData()pcall(function()if writefile then writefile("lh_keydata.json",Http:JSONEncode(keyData))end end)end
-local function isWhitelisted()return WHITELIST[player.Name]==true end
-local function generateKey()local chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"local key="free24h_"for i=1,8 do key=key..string.sub(chars,random(1,#chars),random(1,#chars))end return key end
-local function checkKey(inputKey)
-    local keys=g()
-    if keys[inputKey]=="lifetime"then return true,"lifetime"end
-    if keys[inputKey]then
-        if keyData[inputKey]then
-            local elapsed=os.time()-keyData[inputKey].activated
-            local remaining=keys[inputKey]-elapsed
-            if remaining>0 then return true,"active",remaining else keyData[inputKey].expired=true saveKeyData()return false,"expired"end
-        else
-            keyData[inputKey]={activated=os.time(),user=player.Name,expired=false}saveKeyData()
-            return true,"active",keys[inputKey]
-        end
-    end
-    if inputKey:match("^free24h_")then
-        if keyData[inputKey]then
-            local elapsed=os.time()-keyData[inputKey].activated
-            local remaining=86400-elapsed
-            if remaining>0 then return true,"active",remaining else keyData[inputKey].expired=true saveKeyData()return false,"expired"end
-        else
-            keyData[inputKey]={activated=os.time(),user=player.Name,expired=false,generated=true}saveKeyData()
-            return true,"active",86400
-        end
-    end
-    if keyData[inputKey]and keyData[inputKey].expired then return false,"burned"end
-    return false,"invalid"end
-
-local function showKeyUI(callback)
-    local sg=Instance.new("ScreenGui")sg.Name="KeySystem"sg.ResetOnSpawn=false sg.Parent=player:WaitForChild("PlayerGui")
-    local blur=Instance.new("BlurEffect")blur.Size=10 blur.Parent=game.Lighting
-    local frame=Instance.new("Frame")frame.Size=UDim2.new(0,350,0,340)frame.Position=UDim2.new(0.5,-175,0.5,-170)frame.BackgroundColor3=Color3.fromRGB(15,10,30)frame.BackgroundTransparency=0.2 frame.BorderSizePixel=0 frame.ClipsDescendants=true frame.Parent=sg
-    local glow=Instance.new("Frame")glow.Size=UDim2.new(1,6,1,6)glow.Position=UDim2.new(0,-3,0,-3)glow.BackgroundColor3=Color3.fromRGB(150,50,255)glow.BackgroundTransparency=0.6 glow.BorderSizePixel=0 glow.Parent=frame Instance.new("UICorner",glow).CornerRadius=UDim.new(0,18)
-    Instance.new("UICorner",frame).CornerRadius=UDim.new(0,14)
-    local title=Instance.new("TextLabel")title.Size=UDim2.new(1,0,0,35)title.Position=UDim2.new(0,0,0,8)title.BackgroundTransparency=1 title.Text="✦ LEGEND HUB ✦"title.TextColor3=Color3.fromRGB(255,255,255)title.TextScaled=true title.Font=Enum.Font.GothamBlack title.Parent=frame
-    local grad=Instance.new("UIGradient",title)grad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(200,50,255)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(50,150,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(200,50,255))})
-    local subtitle=Instance.new("TextLabel")subtitle.Size=UDim2.new(1,0,0,18)subtitle.Position=UDim2.new(0,0,0,42)subtitle.BackgroundTransparency=1 subtitle.Text="Enter key or generate one"subtitle.TextColor3=Color3.fromRGB(160,150,190)subtitle.TextScaled=true subtitle.Font=Enum.Font.Gotham subtitle.Parent=frame
-    local box=Instance.new("TextBox")box.Size=UDim2.new(0.8,0,0,32)box.Position=UDim2.new(0.1,0,0,68)box.BackgroundColor3=Color3.fromRGB(30,25,50)box.BackgroundTransparency=0.3 box.TextColor3=Color3.fromRGB(255,255,255)box.PlaceholderText="🔑 Paste key here..."box.PlaceholderColor3=Color3.fromRGB(100,90,130)box.Font=Enum.Font.Gotham box.TextScaled=true box.BorderSizePixel=0 box.ClipsDescendants=true box.Parent=frame Instance.new("UICorner",box).CornerRadius=UDim.new(0,8)
-    local boxGlow=Instance.new("Frame")boxGlow.Size=UDim2.new(1,2,1,2)boxGlow.Position=UDim2.new(0,-1,0,-1)boxGlow.BackgroundColor3=Color3.fromRGB(150,50,255)boxGlow.BackgroundTransparency=0.8 boxGlow.BorderSizePixel=0 boxGlow.Parent=box Instance.new("UICorner",boxGlow).CornerRadius=UDim.new(0,9)
-    local genBox=Instance.new("TextBox")genBox.Size=UDim2.new(0.8,0,0,32)genBox.Position=UDim2.new(0.1,0,0,108)genBox.BackgroundColor3=Color3.fromRGB(30,25,50)genBox.BackgroundTransparency=0.3 genBox.TextColor3=Color3.fromRGB(100,200,255)genBox.PlaceholderText="🔄 Generated key..."genBox.PlaceholderColor3=Color3.fromRGB(60,60,80)genBox.Font=Enum.Font.Gotham genBox.TextScaled=true genBox.BorderSizePixel=0 genBox.ClipsDescendants=true genBox.Active=false genBox.Parent=frame Instance.new("UICorner",genBox).CornerRadius=UDim.new(0,8)
-    local genGlow=Instance.new("Frame")genGlow.Size=UDim2.new(1,2,1,2)genGlow.Position=UDim2.new(0,-1,0,-1)genGlow.BackgroundColor3=Color3.fromRGB(100,200,255)genGlow.BackgroundTransparency=0.8 genGlow.BorderSizePixel=0 genGlow.Parent=genBox Instance.new("UICorner",genGlow).CornerRadius=UDim.new(0,9)
-    local copyBtn=Instance.new("TextButton")copyBtn.Size=UDim2.new(0.25,0,0,22)copyBtn.Position=UDim2.new(0.37,0,0,148)copyBtn.BackgroundColor3=Color3.fromRGB(40,40,70)copyBtn.TextColor3=Color3.fromRGB(200,200,255)copyBtn.Text="📋 COPY"copyBtn.Font=Enum.Font.GothamBold copyBtn.TextScaled=true copyBtn.BorderSizePixel=0 copyBtn.Visible=false copyBtn.Parent=frame Instance.new("UICorner",copyBtn).CornerRadius=UDim.new(0,6)
-    local btn=Instance.new("TextButton")btn.Size=UDim2.new(0.4,0,0,32)btn.Position=UDim2.new(0.05,0,0,185)btn.BackgroundColor3=Color3.fromRGB(150,50,255)btn.TextColor3=Color3.fromRGB(255,255,255)btn.Text="▶ UNLOCK"btn.Font=Enum.Font.GothamBold btn.TextScaled=true btn.BorderSizePixel=0 btn.Parent=frame Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
-    local genBtn=Instance.new("TextButton")genBtn.Size=UDim2.new(0.4,0,0,32)genBtn.Position=UDim2.new(0.55,0,0,185)genBtn.BackgroundColor3=Color3.fromRGB(30,30,60)genBtn.TextColor3=Color3.fromRGB(200,200,255)genBtn.Text="🎲 GENERATE"genBtn.Font=Enum.Font.GothamBold genBtn.TextScaled=true genBtn.BorderSizePixel=0 genBtn.Parent=frame Instance.new("UICorner",genBtn).CornerRadius=UDim.new(0,10)
-    local timerLabel=Instance.new("TextLabel")timerLabel.Size=UDim2.new(1,0,0,25)timerLabel.Position=UDim2.new(0,0,0,228)timerLabel.BackgroundTransparency=1 timerLabel.Text=""timerLabel.TextColor3=Color3.fromRGB(255,200,100)timerLabel.TextScaled=true timerLabel.Font=Enum.Font.Gotham timerLabel.Parent=frame
-    local status=Instance.new("TextLabel")status.Size=UDim2.new(1,0,0,22)status.Position=UDim2.new(0,0,0,255)status.BackgroundTransparency=1 status.Text=""status.TextColor3=Color3.fromRGB(255,100,100)status.TextScaled=true status.Font=Enum.Font.Gotham status.Parent=frame
-    local timeRemain=Instance.new("TextLabel")timeRemain.Size=UDim2.new(1,0,0,20)timeRemain.Position=UDim2.new(0,0,0,280)timeRemain.BackgroundTransparency=1 timeRemain.Text=""timeRemain.TextColor3=Color3.fromRGB(100,200,255)timeRemain.TextScaled=true timeRemain.Font=Enum.Font.Gotham timeRemain.Parent=frame
-    local close=Instance.new("TextButton")close.Size=UDim2.new(0,24,0,24)close.Position=UDim2.new(1,-34,0,8)close.BackgroundColor3=Color3.fromRGB(100,30,40)close.BackgroundTransparency=0.5 close.Text="✕"close.TextColor3=Color3.fromRGB(255,200,200)close.Font=Enum.Font.GothamBold close.TextSize=12 close.BorderSizePixel=0 close.Parent=frame Instance.new("UICorner",close).CornerRadius=UDim.new(0,6)close.MouseButton1Click:Connect(function()sg:Destroy();blur:Destroy()end)
-
-    local function updateTimer(remaining)if remaining then local hours=math.floor(remaining/3600)local mins=math.floor((remaining%3600)/60)local secs=math.floor(remaining%60)if hours>0 then timeRemain.Text=string.format("⏰ %dh %dm %ds",hours,mins,secs)elseif mins>0 then timeRemain.Text=string.format("⏰ %dm %ds",mins,secs)else timeRemain.Text=string.format("⏰ %ds",secs)end timeRemain.TextColor3=Color3.fromRGB(100,200,255)else timeRemain.Text=""end end
-    local timerThread
-    local function startTimer(remaining)if timerThread then task.cancel(timerThread)end timerThread=spawn(function()while remaining>0 do updateTimer(remaining)wait(1)remaining=remaining-1 end updateTimer(nil)end)end
-    local generatedKey=""
-    local function startKeyGeneration()
-        generatedKey=generateKey()
-        genBox.Text=generatedKey
-        genBox.PlaceholderText=""
-        copyBtn.Visible=true
-        genBtn.BackgroundColor3=Color3.fromRGB(60,40,40)
-        genBtn.Text="⏳ 60s"
-        genBtn.TextColor3=Color3.fromRGB(200,150,150)
-        genBtn.Active=false
-        timerLabel.Text="⏳ Generating... 60s"
-        timerLabel.TextColor3=Color3.fromRGB(255,200,100)
-        status.Text=""
-        copyBtn.Visible=false
-        spawn(function()for i=60,0,-1 do if i>0 then genBtn.Text=string.format("⏳ %ds",i)timerLabel.Text=string.format("⏳ Please wait %ds...",i)else timerLabel.Text="✅ Key generated! Click UNLOCK."timerLabel.TextColor3=Color3.fromRGB(100,255,100)genBtn.BackgroundColor3=Color3.fromRGB(30,30,60)genBtn.Text="🎲 GENERATE"genBtn.TextColor3=Color3.fromRGB(200,200,255)genBtn.Active=true status.Text="✅ Key generated! Click UNLOCK."status.TextColor3=Color3.fromRGB(100,255,100)copyBtn.Visible=true end wait(1)end end)
-    end
-    copyBtn.MouseButton1Click:Connect(function()if generatedKey~=""and genBox.Text~=""then setclipboard(generatedKey)status.Text="📋 Key copied!"status.TextColor3=Color3.fromRGB(100,200,255)timerLabel.Text="📋 Copied! Paste in the box above."timerLabel.TextColor3=Color3.fromRGB(100,200,255)end end)
-    genBtn.MouseButton1Click:Connect(function()if genBtn.Active==false then return end startKeyGeneration()end)
-    btn.MouseButton1Click:Connect(function()
-        local entered=box.Text
-        if entered==""then status.Text="❌ Please enter a key!"status.TextColor3=Color3.fromRGB(255,100,100)return end
-        local valid,keyType,remaining=checkKey(entered)
-        if valid then
-            if keyType=="lifetime"then status.Text="✅ PERMANENT ACCESS!"status.TextColor3=Color3.fromRGB(100,255,100)timeRemain.Text="👑 VIP - Never Expires!"timeRemain.TextColor3=Color3.fromRGB(255,215,0)else status.Text="✅ ACCESS GRANTED!"status.TextColor3=Color3.fromRGB(100,255,100)startTimer(remaining)end
-            for i=1,3 do btn.BackgroundColor3=Color3.fromRGB(100,255,100)wait(0.1)btn.BackgroundColor3=Color3.fromRGB(150,50,255)wait(0.1)end
-            wait(0.5)sg:Destroy();blur:Destroy()
-            if callback then callback()end
-        else
-            if keyType=="expired"or keyType=="burned"then status.Text="❌ Key EXPIRED! Generate a new one."status.TextColor3=Color3.fromRGB(255,50,50)timeRemain.Text="💀 Key is BURNED"timeRemain.TextColor3=Color3.fromRGB(255,50,50)else status.Text="❌ Invalid key! Try again."status.TextColor3=Color3.fromRGB(255,100,100)end
-            box.Text=""
-            box.PlaceholderText="Try again..."
-            local origPos=frame.Position
-            for i=1,5 do frame.Position=UDim2.new(0.5,-175+(i%2==0 and 8 or -8),0.5,-170)wait(0.05)end
-            frame.Position=origPos
-        end
-    end)
-    box.FocusLost:Connect(function(enterPressed)if enterPressed then btn.MouseButton1Click:Fire()end end)
-end
-
 function StartLegendHub()
 
 local SAVE=_G.LH_Saves or {}_G.LH_Saves=SAVE SAVE.kaTargets=SAVE.kaTargets or"" SAVE.kaFriends=SAVE.kaFriends or"" SAVE.headSit=SAVE.headSit or"" SAVE.curTheme=SAVE.curTheme or"legend" SAVE.keybinds=SAVE.keybinds or{}
@@ -222,7 +126,26 @@ local function stopAura()S.KillAura=false end
 TC(RunService.Heartbeat,function()if S.AutoBlock then pcall(function()BlockR:InvokeServer(true)end)end end)
 TC(RunService.Heartbeat,function()if not S.AutoFarm then return end local ch=player.Character if not ch then return end local myHRP=ch:FindFirstChild("HumanoidRootPart")local myHu=ch:FindFirstChildOfClass("Humanoid")if not myHRP or not myHu or myHu.Health<=0 then return end local tgt=findNearest(S.KillAuraRange*3)if tgt and tgt.Character then local tHRP=tgt.Character:FindFirstChild("HumanoidRootPart")local tHu=tgt.Character:FindFirstChildOfClass("Humanoid")if tHRP and tHu and tHu.Health>0 then myHRP.CFrame=CFrame.new(tHRP.Position-tHRP.CFrame.LookVector*3+Vector3.new(0,2,0),tHRP.Position)pcall(function()PunchR:InvokeServer()end)doHit(tHu,tHRP,myHRP)end end end)
 local lastRawGrabSpam=0
-TC(RunService.Heartbeat,function()if not S.GrabSpamNoTP then return end local now=tick()if now-lastRawGrabSpam<0.35 then return end lastRawGrabSpam=now local ch=player.Character if not ch then return end local myHRP=ch:FindFirstChild("HumanoidRootPart")if not myHRP then return end for _,p in ipairs(Players:GetPlayers())do if p==player or not p.Character then continue end if isFriend(p.Name)or isFriend(p.DisplayName)then continue end if not isTarget(p.Name)and not isTarget(p.DisplayName)then continue end local hrp=p.Character:FindFirstChild("HumanoidRootPart")local hu=p.Character:FindFirstChildOfClass("Humanoid")if hrp and hu and hu.Health>0 and(hrp.Position-myHRP.Position).Magnitude<=S.KillAuraRange then doRawGrab(p)end end end)
+TC(RunService.Heartbeat,function()
+    if not S.GrabSpamNoTP then return end
+    local now=tick()
+    if now-lastRawGrabSpam<0.1 then return end
+    lastRawGrabSpam=now
+    local ch=player.Character
+    if not ch then return end
+    local myHRP=ch:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    for _,p in ipairs(Players:GetPlayers())do
+        if p==player or not p.Character then continue end
+        if isFriend(p.Name)or isFriend(p.DisplayName)then continue end
+        if not isTarget(p.Name)and not isTarget(p.DisplayName)then continue end
+        local hrp=p.Character:FindFirstChild("HumanoidRootPart")
+        local hu=p.Character:FindFirstChildOfClass("Humanoid")
+        if hrp and hu and hu.Health>0 and(hrp.Position-myHRP.Position).Magnitude<=S.KillAuraRange then
+            doRawGrab(p)
+        end
+    end
+end)
 TC(RunService.Heartbeat,function(dt)if not S.TPWalk then return end local ch=player.Character if not ch then return end local hu=ch:FindFirstChildOfClass("Humanoid")local hrp=ch:FindFirstChild("HumanoidRootPart")if hu and hrp and hu.MoveDirection.Magnitude>0 then hrp.CFrame=hrp.CFrame+hu.MoveDirection*S.tpSpeed*dt end end)
 TC(RunService.Heartbeat,function()if not S.AntiRag then return end local ch=player.Character if ch then cleanRag(ch)end end)
 TC(player.CharacterAdded,function(ch)ch.DescendantAdded:Connect(function()if S.AntiRag then wait();cleanRag(ch)end end)end)
@@ -269,7 +192,7 @@ local _notifs={}
 local function _restack()local y=0 for _,f in ipairs(_notifs)do if f and f.Parent then TweenService:Create(f,TweenInfo.new(0.2,Enum.EasingStyle.Back),{Position=UDim2.new(0,0,0,y)}):Play()y=y+60+5 end end end
 local function Notif(title,body,ntype)local acc=(ntype=="ok"and Color3.fromRGB(100,255,150))or(ntype=="warn"and Color3.fromRGB(200,185,120))or(ntype=="err"and Color3.fromRGB(200,80,80))or Color3.fromRGB(200,200,220)local y=#_notifs*(60+5)local f=Instance.new("Frame",NotifHolder)f.Size=UDim2.new(1,0,0,60)f.Position=UDim2.new(1,20,0,y)f.BackgroundColor3=Color3.fromRGB(20,20,25)f.BackgroundTransparency=0.2 f.BorderSizePixel=0 f.ZIndex=9001 Instance.new("UICorner",f).CornerRadius=UDim.new(0,10)local acbar=Instance.new("Frame",f)acbar.Size=UDim2.new(0,4,0,40)acbar.Position=UDim2.new(0,0,0.5,-20)acbar.BackgroundColor3=acc acbar.BorderSizePixel=0 Instance.new("UICorner",acbar).CornerRadius=UDim.new(0,2)local tl=Instance.new("TextLabel",f)tl.Size=UDim2.new(1,-20,0,18)tl.Position=UDim2.new(0,12,0,8)tl.BackgroundTransparency=1 tl.Text=title tl.Font=Enum.Font.GothamBold tl.TextSize=11 tl.TextColor3=Color3.new(1,1,1)tl.TextXAlignment=Enum.TextXAlignment.Left tl.ZIndex=9002 local bl=Instance.new("TextLabel",f)bl.Size=UDim2.new(1,-20,0,30)bl.Position=UDim2.new(0,12,0,26)bl.BackgroundTransparency=1 bl.Text=body or"" bl.Font=Enum.Font.Gotham bl.TextSize=9 bl.TextColor3=Color3.fromRGB(150,150,160)bl.TextXAlignment=Enum.TextXAlignment.Left bl.TextWrapped=true bl.ZIndex=9002 insert(_notifs,f)TweenService:Create(f,TweenInfo.new(0.35,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,y)}):Play()task.delay(4.5,function()if f and f.Parent then local idx=table.find(_notifs,f)if idx then table.remove(_notifs,idx)end TweenService:Create(f,TweenInfo.new(0.2),{Position=UDim2.new(1,20,0,f.Position.Y.Offset),BackgroundTransparency=1}):Play()task.delay(0.22,function()pcall(function()f:Destroy()end)end)task.delay(0.05,_restack)end end)end
 local Col={bg=Color3.fromRGB(8,5,15),glass=Color3.fromRGB(15,10,25),gl=Color3.fromRGB(20,15,30),acc=Color3.fromRGB(200,180,255),accB=Color3.fromRGB(230,210,255),accD=Color3.fromRGB(50,40,65),txt=Color3.fromRGB(235,230,245),dim=Color3.fromRGB(160,150,180),mut=Color3.fromRGB(100,90,120),tOff=Color3.fromRGB(30,25,40),tOn=Color3.fromRGB(70,60,90),kOff=Color3.fromRGB(120,110,140),kOn=Color3.fromRGB(220,200,255),stk=Color3.fromRGB(50,40,60),stkL=Color3.fromRGB(70,60,85),cls=Color3.fromRGB(100,30,40),mn=Color3.fromRGB(40,35,50),inp=Color3.fromRGB(12,8,20),tabBg=Color3.fromRGB(15,10,25),tabAc=Color3.fromRGB(45,35,65),trk=Color3.fromRGB(8,5,15),sec=Color3.fromRGB(20,15,30)}
-local SG=Instance.new("ScreenGui")SG.Name="LEGEND_HUB"SG.ResetOnSpawn=false SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling SG.Parent=CoreGui
+local SG=Instance.new("ScreenGui")SG.Name="LEGEND_HUB_V1"SG.ResetOnSpawn=false SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling SG.Parent=CoreGui
 local Main=Instance.new("Frame")Main.Size=UDim2.new(0,360,0,420)Main.Position=UDim2.new(0.5,-180,0.5,-210)Main.BackgroundColor3=Color3.fromRGB(0,0,0)Main.BackgroundTransparency=0.85 Main.BorderSizePixel=0 Main.ClipsDescendants=true Main.Parent=SG
 local mainCorner=Instance.new("UICorner",Main)mainCorner.CornerRadius=UDim.new(0,16)
 local Glow=Instance.new("Frame")Glow.Size=UDim2.new(1,6,1,6)Glow.Position=UDim2.new(0,-3,0,-3)Glow.BackgroundColor3=Color3.fromRGB(255,0,255)Glow.BackgroundTransparency=0.7 Glow.BorderSizePixel=0 Glow.Parent=Main
@@ -282,7 +205,7 @@ local dragObj={dragging=false,dragStart=nil,startPos=nil,glowStart=nil}
 TitleBar.InputBegan:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragObj.dragging=true dragObj.dragStart=input.Position dragObj.startPos=Main.Position dragObj.glowStart=Glow.Position end end)
 UserInputService.InputChanged:Connect(function(input)if dragObj.dragging and(input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch)then local d=input.Position-dragObj.dragStart Main.Position=UDim2.new(dragObj.startPos.X.Scale,dragObj.startPos.X.Offset+d.X,dragObj.startPos.Y.Scale,dragObj.startPos.Y.Offset+d.Y)Glow.Position=UDim2.new(dragObj.startPos.X.Scale,dragObj.startPos.X.Offset+d.X+3,dragObj.startPos.Y.Scale,dragObj.startPos.Y.Offset+d.Y+3)end end)
 UserInputService.InputEnded:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragObj.dragging=false end end)
-local CenterTitle=Instance.new("TextLabel")CenterTitle.Size=UDim2.new(1,-90,0,22)CenterTitle.Position=UDim2.new(0,10,0,4)CenterTitle.BackgroundTransparency=1 CenterTitle.Text="LEGEND HUB"CenterTitle.TextColor3=Color3.new(1,1,1)CenterTitle.Font=Enum.Font.GothamBlack CenterTitle.TextSize=18 CenterTitle.TextXAlignment=Enum.TextXAlignment.Left CenterTitle.Parent=TitleBar
+local CenterTitle=Instance.new("TextLabel")CenterTitle.Size=UDim2.new(1,-90,0,22)CenterTitle.Position=UDim2.new(0,10,0,4)CenterTitle.BackgroundTransparency=1 CenterTitle.Text="LEGEND HUB V1"CenterTitle.TextColor3=Color3.new(1,1,1)CenterTitle.Font=Enum.Font.GothamBlack CenterTitle.TextSize=18 CenterTitle.TextXAlignment=Enum.TextXAlignment.Left CenterTitle.Parent=TitleBar
 local cGrad=Instance.new("UIGradient",CenterTitle)cGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,0)),ColorSequenceKeypoint.new(0.25,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(0.75,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,255))})
 local SubTitle=Instance.new("TextLabel")SubTitle.Size=UDim2.new(1,-90,0,10)SubTitle.Position=UDim2.new(0,12,0,28)SubTitle.BackgroundTransparency=1 SubTitle.Text="Made by LEGEND"SubTitle.TextColor3=Color3.fromRGB(180,180,200)SubTitle.Font=Enum.Font.GothamBold SubTitle.TextSize=7 SubTitle.TextXAlignment=Enum.TextXAlignment.Left SubTitle.Parent=TitleBar
 local CB=Instance.new("TextButton")CB.Size=UDim2.new(0,24,0,22)CB.Position=UDim2.new(1,-30,0.5,-11)CB.Text="X"CB.BackgroundColor3=Color3.fromRGB(100,30,40)CB.BackgroundTransparency=0.3 CB.TextColor3=Color3.fromRGB(255,200,200)CB.Font=Enum.Font.GothamBold CB.TextSize=12 CB.BorderSizePixel=0 CB.Parent=TitleBar
@@ -416,7 +339,7 @@ Tog(P9,"ESP",function(v)S.EspBox=v;if v then startEsp()else stopEsp()end end,S.E
 Btn(P9,"Clear ESP",function()for p in pairs(espObjects)do destroyEsp(p)end end)
 Sec(P10,"LEGEND HUB")
 local wc=Instance.new("Frame")wc.Size=UDim2.new(1,0,0,80)wc.BackgroundColor3=Color3.fromRGB(20,15,30)wc.BackgroundTransparency=0.4 wc.BorderSizePixel=0 wc.Parent=P10 Instance.new("UICorner",wc).CornerRadius=UDim.new(0,5)
-local wnL=Instance.new("TextLabel",wc)wnL.Size=UDim2.new(1,-20,0,30)wnL.Position=UDim2.new(0,10,0,6)wnL.BackgroundTransparency=1 wnL.Text="LEGEND HUB"wnL.TextColor3=Color3.fromRGB(235,230,245)wnL.Font=Enum.Font.GothamBlack wnL.TextSize=24 wnL.TextXAlignment=Enum.TextXAlignment.Left
+local wnL=Instance.new("TextLabel",wc)wnL.Size=UDim2.new(1,-20,0,30)wnL.Position=UDim2.new(0,10,0,6)wnL.BackgroundTransparency=1 wnL.Text="LEGEND HUB V1"wnL.TextColor3=Color3.fromRGB(235,230,245)wnL.Font=Enum.Font.GothamBlack wnL.TextSize=24 wnL.TextXAlignment=Enum.TextXAlignment.Left
 local wnGrad=Instance.new("UIGradient",wnL)wnGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,0)),ColorSequenceKeypoint.new(0.25,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(0.75,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,255))})
 local infoL=Instance.new("TextLabel",wc)infoL.Size=UDim2.new(1,-20,0,14)infoL.Position=UDim2.new(0,10,0,38)infoL.BackgroundTransparency=1 infoL.Text="Welcome "..player.DisplayName infoL.TextColor3=Color3.fromRGB(160,150,180)infoL.Font=Enum.Font.Gotham infoL.TextSize=9 infoL.TextXAlignment=Enum.TextXAlignment.Left
 local infoL2=Instance.new("TextLabel",wc)infoL2.Size=UDim2.new(1,-20,0,12)infoL2.Position=UDim2.new(0,10,0,54)infoL2.BackgroundTransparency=1 infoL2.Text="Q=TP+Grab | H=Grab Spam | Data auto-saves"infoL2.TextColor3=Color3.fromRGB(200,180,255)infoL2.Font=Enum.Font.Gotham infoL2.TextSize=7 infoL2.TextXAlignment=Enum.TextXAlignment.Left
@@ -431,7 +354,7 @@ Btn(P12,"Save All",function()DoSave();Notif("Saved","All settings saved to lh_da
 Btn(P12,"Load All",function()pcall(function()if readfile then local ok,d=pcall(function()return Http:JSONDecode(readfile("lh_data.json"))end)if ok and type(d)=="table"then for k,v in pairs(d)do SAVE[k]=v end loadAllSettings()Notif("Loaded","Settings restored from lh_data.json","ok")else Notif("No Data","No saved data found","err")end end end)end)
 Btn(P12,"Delete Data",function()pcall(function()if isfile("lh_data.json")then delfile("lh_data.json")SAVE={}_G.LH_Saves=SAVE Notif("Deleted","Data file removed","warn")end end)end)
 Sec(P13,"THEMES")
-local function applyLegendTheme()Main.BackgroundColor3=Color3.fromRGB(0,0,0)Main.BackgroundTransparency=0.85 Glow.BackgroundColor3=Color3.fromRGB(255,0,255)Glow.BackgroundTransparency=0.7 BgText.Text="LEGEND"BgText.TextColor3=Color3.fromRGB(255,255,255)BgText.TextTransparency=0.92 TitleBar.BackgroundColor3=Color3.fromRGB(20,20,30)TitleBar.BackgroundTransparency=0.5 CenterTitle.Text="LEGEND HUB"SubTitle.Text="Made by LEGEND"SG.Name="LEGEND_HUB"S.currentTheme="legend"SaveSetting("currentTheme","legend")Notif("Theme","LEGEND Theme","ok")end
+local function applyLegendTheme()Main.BackgroundColor3=Color3.fromRGB(0,0,0)Main.BackgroundTransparency=0.85 Glow.BackgroundColor3=Color3.fromRGB(255,0,255)Glow.BackgroundTransparency=0.7 BgText.Text="LEGEND"BgText.TextColor3=Color3.fromRGB(255,255,255)BgText.TextTransparency=0.92 TitleBar.BackgroundColor3=Color3.fromRGB(20,20,30)TitleBar.BackgroundTransparency=0.5 CenterTitle.Text="LEGEND HUB V1"SubTitle.Text="Made by LEGEND"SG.Name="LEGEND_HUB_V1"S.currentTheme="legend"SaveSetting("currentTheme","legend")Notif("Theme","LEGEND Theme","ok")end
 local function applyZicoTheme()Main.BackgroundColor3=Color3.fromRGB(255,255,255)Main.BackgroundTransparency=0.7 Glow.BackgroundColor3=Color3.fromRGB(0,200,255)Glow.BackgroundTransparency=0.7 BgText.Text="ZICO"BgText.TextColor3=Color3.fromRGB(100,100,150)BgText.TextTransparency=0.9 TitleBar.BackgroundColor3=Color3.fromRGB(200,220,240)TitleBar.BackgroundTransparency=0.4 CenterTitle.Text="ZICO HUB"SubTitle.Text="Made by ZICO"SG.Name="ZICO_HUB"S.currentTheme="zico"SaveSetting("currentTheme","zico")Notif("Theme","ZICO Theme","ok")end
 local legendBtn=Instance.new("TextButton")legendBtn.Size=UDim2.new(1,0,0,32)legendBtn.BackgroundColor3=Color3.fromRGB(30,20,50)legendBtn.BorderSizePixel=0 legendBtn.Text="LEGEND"legendBtn.TextColor3=Color3.fromRGB(200,180,255)legendBtn.Font=Enum.Font.GothamBold legendBtn.TextSize=10 legendBtn.Parent=P13
 local ltCorner=Instance.new("UICorner",legendBtn)ltCorner.CornerRadius=UDim.new(0,5)legendBtn.MouseButton1Click:Connect(applyLegendTheme)
@@ -461,12 +384,8 @@ if S.PunchSpam then startPunchSpam()end
 if S.FakeJitter then startJitter()end
 if S.SafeSpot then goSafe()end
 if player.Character and S.AntiRag then spawn(cleanRag,player.Character)end
-Notif("LEGEND HUB","Loaded! Made by LEGEND","ok")
+Notif("LEGEND HUB V1","Loaded! Made by LEGEND","ok")
 end
 
-if isWhitelisted() then
-    print("✅ Whitelisted user:", player.Name)
-    StartLegendHub()
-else
-    showKeyUI(StartLegendHub)
-end
+print("✅ LEGEND HUB V1 LOADED ")
+StartLegendHub()
