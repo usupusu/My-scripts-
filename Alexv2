@@ -1,0 +1,1756 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+local AllConnections = {}
+local FriendNametags = {}
+local TargetNametags = {}
+
+local function safeConnect(signal, func)
+    local conn = signal:Connect(func)
+    table.insert(AllConnections, conn)
+    return conn
+end
+
+local HitboxEnabled = false
+local HitboxVisible = false
+local KillAuraEnabled = false
+local RainbowTagEnabled = false
+local DeathTPEnabled = false
+local AntiRagdollEnabled = false
+local ClickToAddEnabled = false
+local TargetStrafeEnabled = false
+local TargetBackstabEnabled = false
+local HighlightFriendsEnabled = false
+local TargetNametagsEnabled = false
+local TeleportAuraEnabled = false
+local SilentAutoBlockEnabled = false
+local AntiRagComboEnabled = false
+local SpamGrabEnabled = false
+local deathCFrame = nil
+local strafeAngle = 0
+
+local HitboxSize = 10
+local KillAuraRange = 20
+local AttacksPerSecond = 15
+local RainbowSpeed = 10
+local TargetStrafeRadius = 8
+local TargetStrafeSpeed = 3
+local TargetStrafeTargetName = ""
+local StrafeGroundOffset = -3.5
+local TeleportAuraRadius = 15
+local TeleportAuraHeightMin = 0
+local TeleportAuraHeightMax = 10
+local TeleportAuraDelay = 0
+
+local _savedHitboxSize = nil
+local _savedKillAuraRange = nil
+local _savedAttacksPerSecond = nil
+local _tpAuraStartedKillAura = false
+
+local FriendsNamesList = {}
+local TargetNamesList = {}
+
+local isTarget, isFriend
+
+isTarget = function(name)
+    if #TargetNamesList == 0 then return true end
+    local ln = name:lower()
+    for _, t in ipairs(TargetNamesList) do
+        if ln:find(t, 1, true) then return true end
+    end
+    return false
+end
+
+isFriend = function(name)
+    local ln = name:lower()
+    for _, f in ipairs(FriendsNamesList) do if ln:find(f, 1, true) then return true end end
+    return false
+end
+
+local Keybinds = {
+    KillAura = nil,
+    Hitbox = nil,
+    HitboxVisible = nil,
+    RainbowTag = nil,
+    DeathTP = nil,
+    AntiRagdoll = nil,
+    ClickToAdd = nil,
+    TargetStrafe = nil,
+    TargetBackstab = nil,
+    Respawn = nil,
+    SilentAutoBlock = nil,
+    AntiRagCombo = nil,
+    TeleportAura = nil,
+    SpamGrab = nil,
+    GrabTarget = nil,
+}
+
+local ScriptUnloaded = false
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local UpdateBio = Remotes:WaitForChild("UpdateBio")
+local UpdateBioColor = Remotes:WaitForChild("UpdateBioColor")
+local UpdateRPColor = Remotes:WaitForChild("UpdateRPColor")
+
+local rainbowConnection = nil
+local bioSet = false
+
+local function startRainbow()
+    if rainbowConnection then return end
+    if not bioSet then
+        UpdateBio:FireServer("")
+        bioSet = true
+    end
+    local accumulatedBio = 0
+    local accumulatedRP = 0
+    local PHASE_OFFSET = 0.22
+    rainbowConnection = RunService.RenderStepped:Connect(function(dt)
+        local internalSpeed = RainbowSpeed * 0.05
+        accumulatedBio = accumulatedBio + dt * internalSpeed
+        accumulatedRP = accumulatedRP + dt * internalSpeed
+        local hueBio = (accumulatedBio + PHASE_OFFSET) % 1
+        local pastelBio = Color3.fromHSV(hueBio, 0.65, 0.98)
+        local hueRP = accumulatedRP % 1
+        local pastelRP = Color3.fromHSV(hueRP, 0.65, 0.98)
+        UpdateBioColor:FireServer(pastelBio)
+        UpdateRPColor:FireServer(pastelRP)
+    end)
+end
+
+local function stopRainbow()
+    if rainbowConnection then
+        rainbowConnection:Disconnect()
+        rainbowConnection = nil
+    end
+end
+
+local function cleanRagdoll(character)
+    if not character or not AntiRagdollEnabled then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local badStates = {
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.Physics,
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.PlatformStanding
+        }
+        for _, state in ipairs(badStates) do
+            pcall(function() humanoid:SetStateEnabled(state, false) end)
+        end
+        humanoid.PlatformStand = false
+    end
+    local junk = {"RagdollJoints", "NoCollisions", "Local Ragdoll"}
+    for _, name in ipairs(junk) do
+        local obj = character:FindFirstChild(name)
+        if obj then obj:Destroy() end
+    end
+    for _, obj in ipairs(character:GetDescendants()) do
+        if (obj:IsA("BaseConstraint") or obj:IsA("Attachment")) and obj.Name:lower():find("ragdoll") then
+            obj:Destroy()
+        elseif obj:IsA("Motor6D") then
+            obj.Enabled = true
+        end
+    end
+end
+
+local function createNametag(player, char)
+    if FriendNametags[player] then
+        pcall(function() FriendNametags[player]:Destroy() end)
+        FriendNametags[player] = nil
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "FriendNametag"
+    billboard.Size = UDim2.new(0, 120, 0, 36)
+    billboard.StudsOffset = Vector3.new(0, 4.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 200
+    billboard.Adornee = hrp
+    billboard.Parent = CoreGui
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    bg.BackgroundTransparency = 0.3
+    bg.BorderSizePixel = 0
+    bg.Parent = billboard
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    local stroke = Instance.new("UIStroke", bg)
+    stroke.Color = Color3.fromRGB(100, 255, 130)
+    stroke.Thickness = 2
+    stroke.Transparency = 0
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, -6, 1, 0)
+    nameLabel.Position = UDim2.new(0, 3, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "✦ " .. player.DisplayName
+    nameLabel.TextColor3 = Color3.fromRGB(100, 255, 130)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 13
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.Parent = bg
+    FriendNametags[player] = billboard
+end
+
+local function updateFriendNametags()
+    for player, tag in pairs(FriendNametags) do
+        pcall(function() tag:Destroy() end)
+        FriendNametags[player] = nil
+    end
+    if not HighlightFriendsEnabled then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local nameMatch = isFriend(player.Name) or isFriend(player.DisplayName)
+            if nameMatch and player.Character then
+                createNametag(player, player.Character)
+            end
+        end
+    end
+end
+
+local function createTargetNametag(player, char)
+    if TargetNametags[player] then
+        pcall(function() TargetNametags[player]:Destroy() end)
+        TargetNametags[player] = nil
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "TargetNametag"
+    billboard.Size = UDim2.new(0, 120, 0, 36)
+    billboard.StudsOffset = Vector3.new(0, 4.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 200
+    billboard.Adornee = hrp
+    billboard.Parent = CoreGui
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    bg.BackgroundTransparency = 0.3
+    bg.BorderSizePixel = 0
+    bg.Parent = billboard
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    local stroke = Instance.new("UIStroke", bg)
+    stroke.Color = Color3.fromRGB(255, 60, 60)
+    stroke.Thickness = 2
+    stroke.Transparency = 0
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, -6, 1, 0)
+    nameLabel.Position = UDim2.new(0, 3, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "✦ " .. player.DisplayName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 13
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.Parent = bg
+    TargetNametags[player] = billboard
+end
+
+local function updateTargetNametags()
+    for player, tag in pairs(TargetNametags) do
+        pcall(function() tag:Destroy() end)
+        TargetNametags[player] = nil
+    end
+    if not TargetNametagsEnabled then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local notFriend = not isFriend(player.Name) and not isFriend(player.DisplayName)
+            local targeted = isTarget(player.Name) or isTarget(player.DisplayName)
+            if notFriend and targeted then
+                createTargetNametag(player, player.Character)
+            end
+        end
+    end
+end
+
+local function watchPlayerForNametag(player)
+    player.CharacterAdded:Connect(function(char)
+        task.delay(0.4, function()
+            if HighlightFriendsEnabled and (isFriend(player.Name) or isFriend(player.DisplayName)) then
+                createNametag(player, char)
+            end
+            local notFriend = not isFriend(player.Name) and not isFriend(player.DisplayName)
+            local targeted = isTarget(player.Name) or isTarget(player.DisplayName)
+            if TargetNametagsEnabled and notFriend and targeted then
+                createTargetNametag(player, char)
+            end
+        end)
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then watchPlayerForNametag(p) end
+end
+Players.PlayerAdded:Connect(function(p)
+    watchPlayerForNametag(p)
+    task.delay(0.5, updateFriendNametags)
+    task.delay(0.5, updateTargetNametags)
+end)
+Players.PlayerRemoving:Connect(function(p)
+    if FriendNametags[p] then
+        pcall(function() FriendNametags[p]:Destroy() end)
+        FriendNametags[p] = nil
+    end
+    if TargetNametags[p] then
+        pcall(function() TargetNametags[p]:Destroy() end)
+        TargetNametags[p] = nil
+    end
+end)
+
+local function onCharacterAdded(char)
+    if not char then return end
+    local humanoid = char:WaitForChild("Humanoid", 8)
+    local hrp = char:WaitForChild("HumanoidRootPart", 8)
+    if not humanoid or not hrp then return end
+    if DeathTPEnabled and deathCFrame then
+        task.wait(0.1)
+        hrp.CFrame = deathCFrame
+    end
+    humanoid.Died:Connect(function()
+        if hrp and hrp.Parent then deathCFrame = hrp.CFrame end
+    end)
+    char.DescendantAdded:Connect(function(desc)
+        if AntiRagdollEnabled then task.wait() cleanRagdoll(char) end
+    end)
+    task.delay(0.5, updateFriendNametags)
+    task.delay(0.5, updateTargetNametags)
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then task.spawn(onCharacterAdded, LocalPlayer.Character) end
+
+local function findTargetPlayer()
+    if TargetStrafeTargetName == "" then return nil end
+    local search = TargetStrafeTargetName:lower()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Name:lower():find(search) or (p.DisplayName and p.DisplayName:lower():find(search)) then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+safeConnect(RunService.Heartbeat, function(dt)
+    if not TargetStrafeEnabled then return end
+    local targetPlayer = findTargetPlayer()
+    if not targetPlayer or not targetPlayer.Character then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myChar = LocalPlayer.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not targetHRP or not myHRP then return end
+    local targetPos = targetHRP.Position
+    local targetCFrame = targetHRP.CFrame
+    local newPos
+    if TargetBackstabEnabled then
+        local backDirection = -targetCFrame.LookVector * TargetStrafeRadius
+        newPos = targetPos + backDirection + Vector3.new(0, StrafeGroundOffset, 0)
+    else
+        strafeAngle = strafeAngle + (TargetStrafeSpeed * dt)
+        local offsetX = math.cos(strafeAngle) * TargetStrafeRadius
+        local offsetZ = math.sin(strafeAngle) * TargetStrafeRadius
+        local newY = targetPos.Y + StrafeGroundOffset
+        newPos = Vector3.new(targetPos.X + offsetX, newY, targetPos.Z + offsetZ)
+    end
+    local lookAt = Vector3.new(targetPos.X, myHRP.Position.Y, targetPos.Z)
+    myHRP.CFrame = CFrame.new(newPos, lookAt)
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    if StrafeGroundOffset > 0 then
+        if myHum then myHum.PlatformStand = true end
+        myHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    else
+        if myHum then myHum.PlatformStand = false end
+    end
+end)
+
+local RoomCorners = {
+    CFrame.new(-502.5840, 2.9586, -99.7188),
+    CFrame.new(-549.8830, 2.9586, -97.9642),
+    CFrame.new(-549.4838, 2.9586, -172.7903),
+    CFrame.new(-502.7632, 2.9586, -172.8640)
+}
+local TeleportAuraLoop = nil
+
+local function clampToRoomBounds(targetPos, radius)
+    local minX = math.min(-502.5840, -549.8830, -549.4838, -502.7632)
+    local maxX = math.max(-502.5840, -549.8830, -549.4838, -502.7632)
+    local minZ = math.min(-99.7188, -97.9642, -172.7903, -172.8640)
+    local maxZ = math.max(-99.7188, -97.9642, -172.7903, -172.8640)
+    minX = minX + radius
+    maxX = maxX - radius
+    minZ = minZ + radius
+    maxZ = maxZ - radius
+    local clampedX = math.clamp(targetPos.X, minX, maxX)
+    local clampedZ = math.clamp(targetPos.Z, minZ, maxZ)
+    return Vector3.new(clampedX, targetPos.Y, clampedZ)
+end
+
+local function getRandomCorner()
+    return RoomCorners[math.random(1, #RoomCorners)]
+end
+
+local startKillAura, stopKillAura
+
+local function startTeleportAura()
+    if TeleportAuraLoop then TeleportAuraLoop.disconnect() end
+    _savedHitboxSize       = HitboxSize
+    _savedKillAuraRange    = KillAuraRange
+    _savedAttacksPerSecond = AttacksPerSecond
+    HitboxSize       = 30
+    KillAuraRange    = 50
+    AttacksPerSecond = 3000
+    if not KillAuraEnabled then
+        _tpAuraStartedKillAura = true
+        KillAuraEnabled = true
+        startKillAura()
+    else
+        _tpAuraStartedKillAura = false
+        startKillAura()
+    end
+    local loopActive = true
+    TeleportAuraLoop = { disconnect = function() loopActive = false end }
+    task.spawn(function()
+        while loopActive and TeleportAuraEnabled do
+            local char = LocalPlayer.Character
+            local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+            if myHRP then
+                local closestTarget = nil
+                local closestDist = math.huge
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr == LocalPlayer or not plr.Character then continue end
+                    if isFriend(plr.Name) or isFriend(plr.DisplayName) then continue end
+                    if not isTarget(plr.Name) and not isTarget(plr.DisplayName) then continue end
+                    local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                    if targetHRP and hum and hum.Health > 0 then
+                        local dist = (targetHRP.Position - myHRP.Position).Magnitude
+                        if dist < closestDist then
+                            closestDist = dist
+                            closestTarget = targetHRP
+                        end
+                    end
+                end
+                if closestTarget then
+                    local targetPos = closestTarget.Position
+                    local randomHeight = math.random(TeleportAuraHeightMin * 10, TeleportAuraHeightMax * 10) / 10
+                    local offsetAngle = math.random() * math.pi * 2
+                    local offsetX = math.cos(offsetAngle) * TeleportAuraRadius
+                    local offsetZ = math.sin(offsetAngle) * TeleportAuraRadius
+                    local tpToPos = Vector3.new(targetPos.X + offsetX, targetPos.Y + randomHeight, targetPos.Z + offsetZ)
+                    tpToPos = clampToRoomBounds(tpToPos, TeleportAuraRadius)
+                    myHRP.CFrame = CFrame.new(tpToPos)
+                    myHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    task.wait()
+                    local randomCorner = getRandomCorner()
+                    myHRP.CFrame = randomCorner
+                    myHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+            local waitTime = (TeleportAuraDelay / 100) * 5
+            if waitTime > 0 then
+                task.wait(waitTime)
+            else
+                task.wait()
+            end
+        end
+    end)
+end
+
+local function stopTeleportAura()
+    if TeleportAuraLoop then
+        TeleportAuraLoop.disconnect()
+        TeleportAuraLoop = nil
+    end
+    TeleportAuraEnabled = false
+    if _savedHitboxSize       then HitboxSize       = _savedHitboxSize       end
+    if _savedKillAuraRange    then KillAuraRange    = _savedKillAuraRange    end
+    if _savedAttacksPerSecond then AttacksPerSecond = _savedAttacksPerSecond end
+    _savedHitboxSize       = nil
+    _savedKillAuraRange    = nil
+    _savedAttacksPerSecond = nil
+    if _tpAuraStartedKillAura then
+        KillAuraEnabled = false
+        stopKillAura()
+        _tpAuraStartedKillAura = false
+    else
+        if KillAuraEnabled then startKillAura() end
+    end
+end
+
+local autoBlockConnection = nil
+
+local function startAutoBlock()
+    if autoBlockConnection then return end
+    autoBlockConnection = RunService.Heartbeat:Connect(function()
+        if not SilentAutoBlockEnabled then return end
+        pcall(function()
+            ReplicatedStorage.Packages.Knit.Services.CombatService.RF.Block:InvokeServer(true)
+        end)
+    end)
+end
+
+local function stopAutoBlock()
+    if autoBlockConnection then
+        autoBlockConnection:Disconnect()
+        autoBlockConnection = nil
+    end
+end
+
+local spamGrabThread = nil
+
+local function startSpamGrab()
+    if spamGrabThread then return end
+    spamGrabThread = task.spawn(function()
+        while SpamGrabEnabled do
+            pcall(function()
+                ReplicatedStorage.Packages.Knit.Services.CombatService.RF.Grab:InvokeServer()
+            end)
+            task.wait(0.1)
+        end
+        spamGrabThread = nil
+    end)
+end
+
+local function stopSpamGrab()
+    SpamGrabEnabled = false
+    if spamGrabThread then
+        task.cancel(spamGrabThread)
+        spamGrabThread = nil
+    end
+end
+
+local GrabRF = nil
+local grabTargetIndex = 1
+task.spawn(function()
+    task.wait(1)
+    pcall(function()
+        GrabRF = ReplicatedStorage.Packages.Knit.Services.CombatService.RF.Grab
+    end)
+end)
+
+local _arc_ignoreVelocity = false
+
+local function doGrabTarget()
+    if #TargetNamesList == 0 then return end
+    if grabTargetIndex > #TargetNamesList then grabTargetIndex = 1 end
+    local search = TargetNamesList[grabTargetIndex]
+    grabTargetIndex = grabTargetIndex + 1
+    local myChar = LocalPlayer.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    local targetPlayer = nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Name:lower():find(search, 1, true) or (p.DisplayName and p.DisplayName:lower():find(search, 1, true)) then
+                targetPlayer = p
+                break
+            end
+        end
+    end
+    if not targetPlayer or not targetPlayer.Character then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local originalCFrame = myHRP.CFrame
+    _arc_ignoreVelocity = true
+    myHRP.CFrame = targetHRP.CFrame
+    task.wait()
+    pcall(function() GrabRF:InvokeServer() end)
+    task.wait(0.1)
+    myHRP.CFrame = originalCFrame
+    task.spawn(function()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            local timeout = tick() + 5
+            while tick() < timeout do
+                local state = hum:GetState()
+                if state == Enum.HumanoidStateType.Running
+                    or state == Enum.HumanoidStateType.RunningNoPhysics
+                    or state == Enum.HumanoidStateType.Landed
+                    or state == Enum.HumanoidStateType.None then
+                    break
+                end
+                task.wait(0.05)
+            end
+        end
+        task.wait(0.5)
+        _arc_ignoreVelocity = false
+    end)
+end
+
+local _arc_targetCFrame = CFrame.new(-502.844818, 10.1868954, -65.4427567, 0.560596228, 2.67291544e-09, -0.828089297, -2.95736768e-08, 1, -1.67928462e-08, 0.828089297, 3.39036497e-08, 0.560596228)
+local _arc_safeCFrame   = _arc_targetCFrame + Vector3.new(0, 1, 0)
+
+local _arc_connection              = nil
+local _arc_originalCFrame          = nil
+local _arc_originalCameraCFrame    = nil
+local _arc_delay_time              = nil
+local _arc_hasCleanedThisRagdoll   = false
+local _arc_returnTask              = nil
+local _arc_last_zero_to_nonzero    = nil
+local _arc_was_zero_velocity       = false
+
+local function _arc_countDisabledMotors(char)
+    if not char then return 0, 0 end
+    local total, disabled = 0, 0
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+            total += 1
+            if not obj.Enabled then disabled += 1 end
+        end
+    end
+    return total, disabled
+end
+
+local function _arc_forceEndRagdoll(char)
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        for _, state in ipairs({
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.Physics,
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.PlatformStanding
+        }) do
+            pcall(function() humanoid:SetStateEnabled(state, false) end)
+        end
+        humanoid.PlatformStand = false
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    for _, n in ipairs({"RagdollJoints", "NoCollisions", "Local Ragdoll"}) do
+        local obj = char:FindFirstChild(n)
+        if obj then obj:Destroy() end
+    end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+            obj.Enabled = true
+        elseif (obj:IsA("BaseConstraint") or obj:IsA("Attachment")) and obj.Name:lower():find("ragdoll") then
+            obj:Destroy()
+        end
+    end
+end
+
+local function _arc_onCharacterAdded(char)
+    local hrp = char:WaitForChild("HumanoidRootPart", 10)
+    if not hrp then return end
+    if _arc_connection then _arc_connection:Disconnect() _arc_connection = nil end
+    _arc_originalCFrame        = nil
+    _arc_originalCameraCFrame  = nil
+    _arc_delay_time            = nil
+    _arc_hasCleanedThisRagdoll = false
+    if _arc_returnTask then task.cancel(_arc_returnTask) _arc_returnTask = nil end
+    _arc_last_zero_to_nonzero  = nil
+    _arc_was_zero_velocity     = false
+    task.wait(2.5)
+    if not AntiRagComboEnabled then return end
+    _arc_connection = RunService.Heartbeat:Connect(function()
+        if not AntiRagComboEnabled then return end
+        if not char.Parent or not hrp.Parent then
+            if _arc_connection then _arc_connection:Disconnect() _arc_connection = nil end
+            return
+        end
+        local hrp_vel     = hrp.AssemblyLinearVelocity
+        local mag         = hrp_vel.Magnitude
+        local y_vel       = hrp_vel.Y
+        local is_zero_vel = (mag < 1e-6) and (math.abs(y_vel) < 1e-6)
+        if _arc_was_zero_velocity and not is_zero_vel then
+            if not _arc_ignoreVelocity then
+                _arc_last_zero_to_nonzero = tick()
+            end
+        end
+        _arc_was_zero_velocity = is_zero_vel
+        local total, disabled = _arc_countDisabledMotors(char)
+        local isRagdolled     = total >= 12 and (disabled / total) >= 0.9
+        if isRagdolled then
+            if not _arc_originalCFrame then
+                _arc_originalCFrame = hrp.CFrame
+                _arc_originalCameraCFrame = Camera.CFrame
+                local now = tick()
+                _arc_delay_time = 0.1
+                if _arc_last_zero_to_nonzero and (now - _arc_last_zero_to_nonzero) < 1 then
+                    _arc_delay_time = 3.5
+                end
+            end
+            hrp.CFrame = _arc_safeCFrame
+            if not _arc_hasCleanedThisRagdoll then
+                _arc_forceEndRagdoll(char)
+                _arc_hasCleanedThisRagdoll = true
+            end
+        else
+            if _arc_originalCFrame and not _arc_returnTask then
+                _arc_returnTask = task.delay(_arc_delay_time, function()
+                    if hrp and hrp.Parent and _arc_originalCFrame then
+                        hrp.CFrame = _arc_originalCFrame
+                        if _arc_originalCameraCFrame then
+                            Camera.CFrame = _arc_originalCameraCFrame
+                        end
+                        task.delay(0.05, function()
+                            if hrp and hrp.Parent then
+                                hrp.AssemblyLinearVelocity = Vector3.new(0, -1, 0)
+                            end
+                        end)
+                    end
+                    _arc_originalCFrame       = nil
+                    _arc_originalCameraCFrame = nil
+                    _arc_delay_time           = nil
+                    _arc_returnTask           = nil
+                end)
+            end
+            _arc_hasCleanedThisRagdoll = false
+        end
+    end)
+end
+
+local function startAntiRagCombo()
+    local char = LocalPlayer.Character
+    if char then
+        task.spawn(_arc_onCharacterAdded, char)
+    end
+end
+
+local function stopAntiRagCombo()
+    if _arc_connection then
+        _arc_connection:Disconnect()
+        _arc_connection = nil
+    end
+    if _arc_returnTask then
+        task.cancel(_arc_returnTask)
+        _arc_returnTask = nil
+    end
+    _arc_originalCFrame        = nil
+    _arc_originalCameraCFrame  = nil
+    _arc_delay_time            = nil
+    _arc_hasCleanedThisRagdoll = false
+    _arc_last_zero_to_nonzero  = nil
+    _arc_was_zero_velocity     = false
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if AntiRagComboEnabled then
+        task.spawn(_arc_onCharacterAdded, char)
+    end
+end)
+
+local CONFIG_KEY = "Alexv2_Config"
+
+local function getConfig()
+    return {
+        toggles = {
+            KillAuraEnabled = KillAuraEnabled,
+            HitboxEnabled = HitboxEnabled,
+            HitboxVisible = HitboxVisible,
+            RainbowTagEnabled = RainbowTagEnabled,
+            DeathTPEnabled = DeathTPEnabled,
+            AntiRagdollEnabled = AntiRagdollEnabled,
+            ClickToAddEnabled = ClickToAddEnabled,
+            TargetStrafeEnabled = TargetStrafeEnabled,
+            TargetBackstabEnabled = TargetBackstabEnabled,
+            HighlightFriendsEnabled = HighlightFriendsEnabled,
+            TargetNametagsEnabled = TargetNametagsEnabled,
+            TeleportAuraEnabled = TeleportAuraEnabled,
+            SilentAutoBlockEnabled = SilentAutoBlockEnabled,
+            AntiRagComboEnabled = AntiRagComboEnabled,
+            SpamGrabEnabled = SpamGrabEnabled,
+        },
+        sliders = {
+            HitboxSize = HitboxSize,
+            KillAuraRange = KillAuraRange,
+            AttacksPerSecond = AttacksPerSecond,
+            RainbowSpeed = RainbowSpeed,
+            TargetStrafeRadius = TargetStrafeRadius,
+            TargetStrafeSpeed = TargetStrafeSpeed,
+            StrafeGroundOffset = StrafeGroundOffset,
+            TeleportAuraRadius = TeleportAuraRadius,
+            TeleportAuraHeightMin = TeleportAuraHeightMin,
+            TeleportAuraHeightMax = TeleportAuraHeightMax,
+            TeleportAuraDelay = TeleportAuraDelay,
+        },
+        friends = table.concat(FriendsNamesList, " "),
+        targets = table.concat(TargetNamesList, " "),
+        strafeTarget = TargetStrafeTargetName,
+        keybinds = (function()
+            local kb = {}
+            for k, v in pairs(Keybinds) do
+                kb[k] = v and v.Name or nil
+            end
+            return kb
+        end)(),
+    }
+end
+
+local savedConfigs = {}
+
+local function saveConfig(name)
+    savedConfigs[name] = getConfig()
+    pcall(function()
+        local encoded = HttpService:JSONEncode(savedConfigs)
+        writefile("alexv2_configs.json", encoded)
+    end)
+end
+
+local function loadFile()
+    pcall(function()
+        local data = readfile("alexv2_configs.json")
+        if data and data ~= "" then
+            local decoded = HttpService:JSONDecode(data)
+            if decoded and type(decoded) == "table" then
+                savedConfigs = decoded
+            end
+        end
+    end)
+end
+
+loadFile()
+
+local function refreshKeybindDisplays()
+    for k, keyCode in pairs(Keybinds) do
+        if keyCode and ToggleCallbacks[k] and ToggleCallbacks[k].setKeybind then
+            ToggleCallbacks[k].setKeybind(keyCode)
+        end
+    end
+end
+
+local ToggleSetters = {}
+local SliderSetters = {}
+local friendsTextRef = nil
+local targetTextRef = nil
+local strafeTargetBoxRef = nil
+
+local function applyConfig(cfg)
+    if not cfg then return end
+    if cfg.sliders then
+        for k, v in pairs(cfg.sliders) do
+            if SliderSetters[k] then SliderSetters[k](v) end
+        end
+    end
+    if cfg.friends and friendsTextRef then friendsTextRef.Text = cfg.friends end
+    if cfg.targets and targetTextRef then targetTextRef.Text = cfg.targets end
+    if cfg.strafeTarget and strafeTargetBoxRef then
+        strafeTargetBoxRef.Text = cfg.strafeTarget
+        TargetStrafeTargetName = cfg.strafeTarget
+    end
+    if cfg.keybinds then
+        for k, vName in pairs(cfg.keybinds) do
+            if vName and type(vName) == "string" then
+                local ok, keyCode = pcall(function()
+                    return Enum.KeyCode[vName]
+                end)
+                if ok and keyCode then
+                    Keybinds[k] = keyCode
+                end
+            end
+        end
+    end
+    if cfg.toggles then
+        for k, v in pairs(cfg.toggles) do
+            if ToggleSetters[k] then ToggleSetters[k](v) end
+        end
+    end
+    refreshKeybindDisplays()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Alexv2"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "Main"
+MainFrame.Size = UDim2.new(0, 320, 0, 660)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -330)
+MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 55, 0, 55)
+ToggleButton.Position = UDim2.new(1, -75, 0, 15)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleButton.Text = "AL"
+ToggleButton.TextColor3 = Color3.fromRGB(200, 100, 255)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 16
+ToggleButton.ZIndex = 10
+ToggleButton.Parent = ScreenGui
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
+local tbStroke = Instance.new("UIStroke", ToggleButton)
+tbStroke.Color = Color3.fromRGB(100, 180, 255)
+tbStroke.Thickness = 2
+
+ToggleButton.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+local dragging, dragStart, startPos
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
+    end
+end)
+
+local ContentArea = Instance.new("ScrollingFrame")
+ContentArea.Size = UDim2.new(1, -30, 1, -30)
+ContentArea.Position = UDim2.new(0, 15, 0, 15)
+ContentArea.BackgroundTransparency = 1
+ContentArea.ScrollBarThickness = 3
+ContentArea.ScrollBarImageColor3 = Color3.fromRGB(100, 180, 255)
+ContentArea.CanvasSize = UDim2.new(0, 0, 0, 2400)
+ContentArea.ZIndex = 2
+ContentArea.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout", ContentArea)
+Layout.Padding = UDim.new(0, 8)
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function createSection(name, order)
+    local section = Instance.new("Frame")
+    section.BackgroundTransparency = 1
+    section.LayoutOrder = order
+    section.ZIndex = 3
+    section.Parent = ContentArea
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 26)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(100, 180, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 15
+    title.Text = name
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 4
+    title.Parent = section
+    local list = Instance.new("UIListLayout", section)
+    list.Padding = UDim.new(0, 3)
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    return section
+end
+
+local ToggleCallbacks = {}
+
+local function createToggle(text, parent, callback, order, keybindKey)
+    local toggle = Instance.new("Frame")
+    toggle.Size = UDim2.new(1, 0, 0, 32)
+    toggle.BackgroundTransparency = 1
+    toggle.LayoutOrder = order
+    toggle.ZIndex = 3
+    toggle.Parent = parent
+
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 26, 0, 26)
+    checkbox.Position = UDim2.new(0, 2, 0, 3)
+    checkbox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    checkbox.BorderSizePixel = 1
+    checkbox.Text = ""
+    checkbox.ZIndex = 4
+    checkbox.Parent = toggle
+
+    local checkmark = Instance.new("TextLabel")
+    checkmark.Size = UDim2.new(1, 0, 1, 0)
+    checkmark.BackgroundTransparency = 1
+    checkmark.TextColor3 = Color3.fromRGB(100, 180, 255)
+    checkmark.Font = Enum.Font.GothamBold
+    checkmark.TextSize = 15
+    checkmark.Text = ""
+    checkmark.ZIndex = 5
+    checkmark.Parent = checkbox
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -90, 1, 0)
+    label.Position = UDim2.new(0, 32, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 13
+    label.Text = text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
+    label.Parent = toggle
+
+    local bindBtn = Instance.new("TextButton")
+    bindBtn.Size = UDim2.new(0, 50, 0, 24)
+    bindBtn.Position = UDim2.new(1, -55, 0, 4)
+    bindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    bindBtn.Font = Enum.Font.GothamBold
+    bindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    bindBtn.TextSize = 10
+    bindBtn.Text = (keybindKey and Keybinds[keybindKey] and Keybinds[keybindKey].Name) or "None"
+    bindBtn.ZIndex = 4
+    bindBtn.Parent = toggle
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
+
+    local enabled = false
+    local waitingForKey = false
+
+    local function setEnabled(state)
+        enabled = state
+        checkmark.Text = enabled and "✓" or ""
+        checkbox.BackgroundColor3 = enabled and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(30, 30, 30)
+        if callback then callback(enabled) end
+    end
+
+    checkbox.MouseButton1Click:Connect(function() setEnabled(not enabled) end)
+
+    bindBtn.MouseButton1Click:Connect(function()
+        waitingForKey = true
+        bindBtn.Text = "..."
+    end)
+
+    if keybindKey then
+        ToggleCallbacks[keybindKey] = {
+            toggle = function() setEnabled(not enabled) end,
+            getKey = function() return Keybinds[keybindKey] end,
+            setKeybind = function(keyCode)
+                Keybinds[keybindKey] = keyCode
+                bindBtn.Text = keyCode and keyCode.Name or "None"
+            end
+        }
+        ToggleSetters[keybindKey .. "Enabled"] = function(state)
+            if state ~= enabled then setEnabled(state) end
+        end
+        ToggleSetters[text:gsub(" ", "") .. "Enabled"] = function(state)
+            if state ~= enabled then setEnabled(state) end
+        end
+    end
+
+    safeConnect(UserInputService.InputBegan, function(input, gp)
+        if waitingForKey and input.UserInputType == Enum.UserInputType.Keyboard and not gp then
+            if input.KeyCode == Enum.KeyCode.Escape then
+                if keybindKey then Keybinds[keybindKey] = nil end
+                bindBtn.Text = "None"
+            else
+                if keybindKey then Keybinds[keybindKey] = input.KeyCode end
+                bindBtn.Text = input.KeyCode.Name
+            end
+            waitingForKey = false
+        end
+    end)
+
+    return toggle, setEnabled
+end
+
+local function createSlider(text, min, max, default, parent, callback, order)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 44)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.LayoutOrder = order
+    sliderFrame.ZIndex = 3
+    sliderFrame.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -45, 0, 20)
+    label.Position = UDim2.new(0, 4, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 13
+    label.Text = text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
+    label.Parent = sliderFrame
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0, 40, 0, 20)
+    valueLabel.Position = UDim2.new(1, -44, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 13
+    valueLabel.Text = tostring(default)
+    valueLabel.ZIndex = 4
+    valueLabel.Parent = sliderFrame
+
+    local sliderHitArea = Instance.new("TextButton")
+    sliderHitArea.Size = UDim2.new(1, -10, 0, 30)
+    sliderHitArea.Position = UDim2.new(0, 5, 0, 14)
+    sliderHitArea.BackgroundTransparency = 1
+    sliderHitArea.Text = ""
+    sliderHitArea.ZIndex = 3
+    sliderHitArea.Parent = sliderFrame
+
+    local sliderBg = Instance.new("Frame")
+    sliderBg.Size = UDim2.new(1, 0, 0, 6)
+    sliderBg.Position = UDim2.new(0, 0, 0.5, -3)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    sliderBg.ZIndex = 3
+    sliderBg.Parent = sliderHitArea
+    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(0, 3)
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+    sliderFill.ZIndex = 4
+    sliderFill.Parent = sliderBg
+    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 3)
+
+    local sliderBtn = Instance.new("TextButton")
+    sliderBtn.Size = UDim2.new(0, 28, 0, 28)
+    sliderBtn.Position = UDim2.new((default - min) / (max - min), -14, 0.5, -14)
+    sliderBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderBtn.Text = ""
+    sliderBtn.ZIndex = 5
+    sliderBtn.Parent = sliderBg
+    Instance.new("UICorner", sliderBtn).CornerRadius = UDim.new(1, 0)
+
+    local function setValue(value)
+        value = math.clamp(math.floor(value), min, max)
+        local pos = (value - min) / (max - min)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        sliderBtn.Position = UDim2.new(pos, -14, 0.5, -14)
+        valueLabel.Text = tostring(value)
+        callback(value)
+    end
+
+    local function handleSliderInput(inputPos)
+        local pos = math.clamp(
+            (inputPos.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X,
+            0, 1
+        )
+        setValue(min + (max - min) * pos)
+    end
+
+    local slider_dragging = false
+
+    sliderBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slider_dragging = true
+        end
+    end)
+
+    sliderHitArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slider_dragging = true
+            handleSliderInput(input.Position)
+        end
+    end)
+
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slider_dragging = true
+            handleSliderInput(input.Position)
+        end
+    end)
+
+    safeConnect(UserInputService.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slider_dragging = false
+        end
+    end)
+
+    safeConnect(UserInputService.InputChanged, function(input)
+        if slider_dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            handleSliderInput(input.Position)
+        end
+    end)
+
+    return sliderFrame, setValue
+end
+
+local KillAuraSection = createSection("KillAura", 1)
+KillAuraSection.Size = UDim2.new(0.94, 0, 0, 170)
+createToggle("KillAura Enabled", KillAuraSection, function(state) KillAuraEnabled = state if state then startKillAura() else stopKillAura() end end, 1, "KillAura")
+local _, setKARange = createSlider("KillAura Range", 5, 50, 20, KillAuraSection, function(v) KillAuraRange = v end, 2)
+local _, setAPS = createSlider("Attacks/s", 1, 3000, 15, KillAuraSection, function(v) AttacksPerSecond = v end, 3)
+SliderSetters["KillAuraRange"] = setKARange
+SliderSetters["AttacksPerSecond"] = setAPS
+
+local HitboxSection = createSection("Hitbox", 2)
+HitboxSection.Size = UDim2.new(0.94, 0, 0, 155)
+createToggle("Hitbox Enabled", HitboxSection, function(state) HitboxEnabled = state end, 1, "Hitbox")
+createToggle("Hitbox Visible", HitboxSection, function(state) HitboxVisible = state end, 2, "HitboxVisible")
+local _, setHBSize = createSlider("Hitbox Size", 1, 50, 10, HitboxSection, function(v) HitboxSize = v end, 3)
+SliderSetters["HitboxSize"] = setHBSize
+
+local TargetsSection = createSection("Targets", 3)
+TargetsSection.Size = UDim2.new(0.94, 0, 0, 680)
+
+createToggle("Target Strafe Enabled", TargetsSection, function(state)
+    TargetStrafeEnabled = state
+    strafeAngle = 0
+    if not state then
+        local myChar = LocalPlayer.Character
+        local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+        if myHum then myHum.PlatformStand = false end
+    end
+end, 1, "TargetStrafe")
+
+createToggle("Target Backstab (stay behind)", TargetsSection, function(state)
+    TargetBackstabEnabled = state
+end, 2, "TargetBackstab")
+
+do
+    local _, tpAuraSetter = createToggle("Teleport Aura", TargetsSection, function(state)
+        TeleportAuraEnabled = state
+        if state then startTeleportAura() else stopTeleportAura() end
+    end, 3, "TeleportAura")
+    ToggleSetters["TeleportAuraEnabled"] = function(state) tpAuraSetter(state) end
+end
+
+do
+    local _, grabToggleSetter
+    _, grabToggleSetter = createToggle("Grab Target", TargetsSection, function(state)
+        if state then
+            task.spawn(function()
+                doGrabTarget()
+                task.wait(0.2)
+                grabToggleSetter(false)
+            end)
+        end
+    end, 4, "GrabTarget")
+end
+
+createToggle("Target Nametags (through walls)", TargetsSection, function(state)
+    TargetNametagsEnabled = state
+    updateTargetNametags()
+end, 4)
+
+local targetInfo = Instance.new("TextLabel")
+targetInfo.Size = UDim2.new(1, -10, 0, 18)
+targetInfo.BackgroundTransparency = 1
+targetInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
+targetInfo.Font = Enum.Font.Gotham
+targetInfo.TextSize = 11
+targetInfo.Text = "Leave empty = hit everyone (except friends)"
+targetInfo.TextXAlignment = Enum.TextXAlignment.Left
+targetInfo.LayoutOrder = 5
+targetInfo.ZIndex = 4
+targetInfo.Parent = TargetsSection
+
+local targetBoxFrame = Instance.new("Frame")
+targetBoxFrame.Size = UDim2.new(1, -10, 0, 36)
+targetBoxFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+targetBoxFrame.LayoutOrder = 6
+targetBoxFrame.ZIndex = 4
+targetBoxFrame.Parent = TargetsSection
+Instance.new("UICorner", targetBoxFrame).CornerRadius = UDim.new(0, 6)
+local targetLabel = Instance.new("TextLabel")
+targetLabel.Size = UDim2.new(0, 70, 1, 0)
+targetLabel.Position = UDim2.new(0, 8, 0, 0)
+targetLabel.BackgroundTransparency = 1
+targetLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+targetLabel.Font = Enum.Font.GothamBold
+targetLabel.TextSize = 12
+targetLabel.Text = "TARGETS:"
+targetLabel.ZIndex = 5
+targetLabel.Parent = targetBoxFrame
+local targetText = Instance.new("TextBox")
+targetText.Size = UDim2.new(1, -80, 0, 30)
+targetText.Position = UDim2.new(0, 78, 0, 3)
+targetText.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+targetText.TextColor3 = Color3.fromRGB(255, 255, 255)
+targetText.Font = Enum.Font.Gotham
+targetText.TextSize = 12
+targetText.Text = ""
+targetText.PlaceholderText = "target1 target2..."
+targetText.ClearTextOnFocus = false
+targetText.ZIndex = 5
+targetText.Parent = targetBoxFrame
+Instance.new("UICorner", targetText).CornerRadius = UDim.new(0, 4)
+targetTextRef = targetText
+
+local targetCount = Instance.new("TextLabel")
+targetCount.Size = UDim2.new(1, -10, 0, 16)
+targetCount.BackgroundTransparency = 1
+targetCount.TextColor3 = Color3.fromRGB(255, 100, 100)
+targetCount.Font = Enum.Font.GothamBold
+targetCount.TextSize = 10
+targetCount.Text = "Active Targets: 0"
+targetCount.LayoutOrder = 7
+targetCount.ZIndex = 4
+targetCount.Parent = TargetsSection
+
+local strafeTargetBoxFrame = Instance.new("Frame")
+strafeTargetBoxFrame.Size = UDim2.new(1, -10, 0, 36)
+strafeTargetBoxFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+strafeTargetBoxFrame.LayoutOrder = 8
+strafeTargetBoxFrame.ZIndex = 4
+strafeTargetBoxFrame.Parent = TargetsSection
+Instance.new("UICorner", strafeTargetBoxFrame).CornerRadius = UDim.new(0, 6)
+local strafeLabel = Instance.new("TextLabel")
+strafeLabel.Size = UDim2.new(0, 100, 1, 0)
+strafeLabel.Position = UDim2.new(0, 8, 0, 0)
+strafeLabel.BackgroundTransparency = 1
+strafeLabel.TextColor3 = Color3.fromRGB(180, 100, 255)
+strafeLabel.Font = Enum.Font.GothamBold
+strafeLabel.TextSize = 12
+strafeLabel.Text = "STRAFE TARGET:"
+strafeLabel.ZIndex = 5
+strafeLabel.Parent = strafeTargetBoxFrame
+local strafeTargetBox = Instance.new("TextBox")
+strafeTargetBox.Size = UDim2.new(1, -110, 0, 30)
+strafeTargetBox.Position = UDim2.new(0, 105, 0, 3)
+strafeTargetBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+strafeTargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+strafeTargetBox.Font = Enum.Font.Gotham
+strafeTargetBox.TextSize = 12
+strafeTargetBox.Text = ""
+strafeTargetBox.PlaceholderText = "target name..."
+strafeTargetBox.ClearTextOnFocus = false
+strafeTargetBox.ZIndex = 5
+strafeTargetBox.Parent = strafeTargetBoxFrame
+Instance.new("UICorner", strafeTargetBox).CornerRadius = UDim.new(0, 4)
+strafeTargetBox:GetPropertyChangedSignal("Text"):Connect(function()
+    TargetStrafeTargetName = strafeTargetBox.Text
+end)
+strafeTargetBoxRef = strafeTargetBox
+
+local _, setStrafeRadius = createSlider("Strafe Radius", 2, 30, 8, TargetsSection, function(v) TargetStrafeRadius = v end, 9)
+local _, setStrafeSpeed = createSlider("Strafe Speed", 1, 20, 3, TargetsSection, function(v) TargetStrafeSpeed = v end, 10)
+local _, setGroundOffset = createSlider("Ground Offset", -15, 10, -3, TargetsSection, function(v) StrafeGroundOffset = v end, 11)
+local _, setTPRadius = createSlider("TP Aura Radius", 5, 30, 15, TargetsSection, function(v) TeleportAuraRadius = v end, 12)
+local _, setTPHMin = createSlider("TP Height Min", 0, 10, 0, TargetsSection, function(v) TeleportAuraHeightMin = v end, 13)
+local _, setTPHMax = createSlider("TP Height Max", 0, 10, 10, TargetsSection, function(v) TeleportAuraHeightMax = v end, 14)
+local _, setTPDelay = createSlider("TP Aura Delay (0=instant, 100=slow)", 0, 100, 0, TargetsSection, function(v) TeleportAuraDelay = v end, 15)
+SliderSetters["TargetStrafeRadius"] = setStrafeRadius
+SliderSetters["TargetStrafeSpeed"] = setStrafeSpeed
+SliderSetters["StrafeGroundOffset"] = setGroundOffset
+SliderSetters["TeleportAuraRadius"] = setTPRadius
+SliderSetters["TeleportAuraHeightMin"] = setTPHMin
+SliderSetters["TeleportAuraHeightMax"] = setTPHMax
+SliderSetters["TeleportAuraDelay"] = setTPDelay
+
+local function parseTargets(text)
+    TargetNamesList = {}
+    for name in text:gmatch("%S+") do
+        table.insert(TargetNamesList, name:lower())
+    end
+    targetCount.Text = "Active Targets: " .. #TargetNamesList
+    updateTargetNametags()
+end
+targetText:GetPropertyChangedSignal("Text"):Connect(function() parseTargets(targetText.Text) end)
+
+local FriendsSection = createSection("Friends List", 4)
+FriendsSection.Size = UDim2.new(0.94, 0, 0, 240)
+
+createToggle("Click/Tap to Add", FriendsSection, function(state) ClickToAddEnabled = state end, 1, "ClickToAdd")
+createToggle("Friend Nametags (through walls)", FriendsSection, function(state)
+    HighlightFriendsEnabled = state
+    updateFriendNametags()
+end, 2)
+
+local friendsBox = Instance.new("Frame")
+friendsBox.Size = UDim2.new(1, -10, 0, 36)
+friendsBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+friendsBox.ZIndex = 4
+friendsBox.Parent = FriendsSection
+Instance.new("UICorner", friendsBox).CornerRadius = UDim.new(0, 6)
+local friendsLabel = Instance.new("TextLabel")
+friendsLabel.Size = UDim2.new(0, 70, 1, 0)
+friendsLabel.Position = UDim2.new(0, 8, 0, 0)
+friendsLabel.BackgroundTransparency = 1
+friendsLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+friendsLabel.Font = Enum.Font.GothamBold
+friendsLabel.TextSize = 12
+friendsLabel.Text = "FRIENDS:"
+friendsLabel.ZIndex = 5
+friendsLabel.Parent = friendsBox
+local friendsText = Instance.new("TextBox")
+friendsText.Size = UDim2.new(1, -80, 0, 30)
+friendsText.Position = UDim2.new(0, 78, 0, 3)
+friendsText.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+friendsText.TextColor3 = Color3.fromRGB(255, 255, 255)
+friendsText.Font = Enum.Font.Gotham
+friendsText.TextSize = 12
+friendsText.Text = ""
+friendsText.PlaceholderText = "friend1 friend2..."
+friendsText.ClearTextOnFocus = false
+friendsText.ZIndex = 5
+friendsText.Parent = friendsBox
+Instance.new("UICorner", friendsText).CornerRadius = UDim.new(0, 4)
+friendsTextRef = friendsText
+
+local friendsCount = Instance.new("TextLabel")
+friendsCount.Size = UDim2.new(1, -10, 0, 16)
+friendsCount.BackgroundTransparency = 1
+friendsCount.TextColor3 = Color3.fromRGB(100, 255, 100)
+friendsCount.Font = Enum.Font.GothamBold
+friendsCount.TextSize = 10
+friendsCount.Text = "Protected Friends: 0"
+friendsCount.ZIndex = 4
+friendsCount.Parent = FriendsSection
+
+local function parseFriends(text)
+    FriendsNamesList = {}
+    for name in text:gmatch("%S+") do table.insert(FriendsNamesList, name:lower()) end
+    friendsCount.Text = "Protected Friends: " .. #FriendsNamesList
+    updateFriendNametags()
+end
+friendsText:GetPropertyChangedSignal("Text"):Connect(function() parseFriends(friendsText.Text) end)
+
+local RainbowSection = createSection("Rainbow Tag", 5)
+RainbowSection.Size = UDim2.new(0.94, 0, 0, 130)
+createToggle("Rainbow Enabled", RainbowSection, function(state) RainbowTagEnabled = state if state then startRainbow() else stopRainbow() end end, 1, "RainbowTag")
+local _, setRainbowSpeed = createSlider("Rainbow Speed", 1, 100, 10, RainbowSection, function(v) RainbowSpeed = v end, 2)
+SliderSetters["RainbowSpeed"] = setRainbowSpeed
+
+local DeathTPSection = createSection("Death TP", 6)
+DeathTPSection.Size = UDim2.new(0.94, 0, 0, 60)
+createToggle("Death TP Enabled", DeathTPSection, function(state) DeathTPEnabled = state if not state then deathCFrame = nil end end, 1, "DeathTP")
+
+local RespawnSection = createSection("Respawn", 7)
+RespawnSection.Size = UDim2.new(0.94, 0, 0, 70)
+
+local respawnBtn = Instance.new("TextButton")
+respawnBtn.Size = UDim2.new(1, -10, 0, 36)
+respawnBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+respawnBtn.BorderSizePixel = 0
+respawnBtn.Text = "Respawn"
+respawnBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+respawnBtn.Font = Enum.Font.GothamSemibold
+respawnBtn.TextSize = 13
+respawnBtn.LayoutOrder = 1
+respawnBtn.ZIndex = 4
+respawnBtn.Parent = RespawnSection
+Instance.new("UICorner", respawnBtn).CornerRadius = UDim.new(0, 6)
+local respawnStroke = Instance.new("UIStroke", respawnBtn)
+respawnStroke.Color = Color3.fromRGB(100, 180, 255)
+respawnStroke.Thickness = 1
+
+local respawnBindBtn = Instance.new("TextButton")
+respawnBindBtn.Size = UDim2.new(0, 55, 0, 24)
+respawnBindBtn.Position = UDim2.new(1, -60, 0, 6)
+respawnBindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+respawnBindBtn.Font = Enum.Font.GothamBold
+respawnBindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+respawnBindBtn.TextSize = 10
+respawnBindBtn.Text = "None"
+respawnBindBtn.ZIndex = 5
+respawnBindBtn.Parent = respawnBtn
+Instance.new("UICorner", respawnBindBtn).CornerRadius = UDim.new(0, 4)
+
+local respawnWaitingForKey = false
+respawnBindBtn.MouseButton1Click:Connect(function()
+    respawnWaitingForKey = true
+    respawnBindBtn.Text = "..."
+end)
+safeConnect(UserInputService.InputBegan, function(input, gp)
+    if respawnWaitingForKey and input.UserInputType == Enum.UserInputType.Keyboard and not gp then
+        if input.KeyCode == Enum.KeyCode.Escape then
+            Keybinds.Respawn = nil
+            respawnBindBtn.Text = "None"
+        else
+            Keybinds.Respawn = input.KeyCode
+            respawnBindBtn.Text = input.KeyCode.Name
+        end
+        respawnWaitingForKey = false
+    end
+end)
+
+local function doRespawn()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Health = 0 end
+end
+
+respawnBtn.MouseButton1Click:Connect(function()
+    doRespawn()
+    respawnBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+    task.delay(0.15, function()
+        respawnBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    end)
+end)
+
+local AntiRagdollSection = createSection("Anti Ragdoll", 8)
+AntiRagdollSection.Size = UDim2.new(0.94, 0, 0, 60)
+createToggle("Anti Ragdoll Enabled", AntiRagdollSection, function(state)
+    AntiRagdollEnabled = state
+    if state and LocalPlayer.Character then cleanRagdoll(LocalPlayer.Character) end
+end, 1, "AntiRagdoll")
+
+local SilentAutoBlockSection = createSection("Silent AutoBlock", 9)
+SilentAutoBlockSection.Size = UDim2.new(0.94, 0, 0, 60)
+createToggle("Silent AutoBlock Enabled", SilentAutoBlockSection, function(state)
+    SilentAutoBlockEnabled = state
+    if state then startAutoBlock() else stopAutoBlock() end
+end, 1, "SilentAutoBlock")
+
+local AntiRagComboSection = createSection("Anti Rag Combo", 10)
+AntiRagComboSection.Size = UDim2.new(0.94, 0, 0, 60)
+createToggle("Anti Rag Combo Enabled", AntiRagComboSection, function(state)
+    AntiRagComboEnabled = state
+    if state then startAntiRagCombo() else stopAntiRagCombo() end
+end, 1, "AntiRagCombo")
+
+local SpamGrabSection = createSection("Spam Grab", 11)
+SpamGrabSection.Size = UDim2.new(0.94, 0, 0, 60)
+createToggle("Spam Grab Enabled", SpamGrabSection, function(state)
+    SpamGrabEnabled = state
+    if state then startSpamGrab() else stopSpamGrab() end
+end, 1, "SpamGrab")
+
+local ConfigSection = createSection("Configs", 12)
+ConfigSection.Size = UDim2.new(0.94, 0, 0, 280)
+
+local configNameBox = Instance.new("TextBox")
+configNameBox.Size = UDim2.new(1, -10, 0, 32)
+configNameBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+configNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+configNameBox.Font = Enum.Font.Gotham
+configNameBox.TextSize = 12
+configNameBox.Text = ""
+configNameBox.PlaceholderText = "Config name..."
+configNameBox.ClearTextOnFocus = false
+configNameBox.LayoutOrder = 1
+configNameBox.ZIndex = 4
+configNameBox.Parent = ConfigSection
+Instance.new("UICorner", configNameBox).CornerRadius = UDim.new(0, 6)
+
+local function makeConfigBtn(text, color, order, onClick)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 13
+    btn.LayoutOrder = order
+    btn.ZIndex = 4
+    btn.Parent = ConfigSection
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local stroke = Instance.new("UIStroke", btn)
+    stroke.Color = color
+    stroke.Thickness = 1
+    btn.MouseButton1Click:Connect(function()
+        onClick(btn)
+        btn.BackgroundColor3 = color
+        task.delay(0.15, function() btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35) end)
+    end)
+    return btn
+end
+
+local configListLabel = Instance.new("TextLabel")
+configListLabel.Size = UDim2.new(1, -10, 0, 16)
+configListLabel.BackgroundTransparency = 1
+configListLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+configListLabel.Font = Enum.Font.Gotham
+configListLabel.TextSize = 10
+configListLabel.Text = "Saved: none"
+configListLabel.TextXAlignment = Enum.TextXAlignment.Left
+configListLabel.LayoutOrder = 5
+configListLabel.ZIndex = 4
+configListLabel.Parent = ConfigSection
+
+local function refreshConfigList()
+    local names = {}
+    for k in pairs(savedConfigs) do table.insert(names, k) end
+    configListLabel.Text = "Saved: " .. (#names > 0 and table.concat(names, ", ") or "none")
+end
+
+makeConfigBtn("Save Config", Color3.fromRGB(100, 255, 100), 2, function()
+    local name = configNameBox.Text
+    if name == "" then name = "default" end
+    saveConfig(name)
+    refreshConfigList()
+    configNameBox.PlaceholderText = "Saved: " .. name
+end)
+
+makeConfigBtn("Load Config", Color3.fromRGB(100, 180, 255), 3, function()
+    local name = configNameBox.Text
+    if name == "" then name = "default" end
+    if savedConfigs[name] then
+        applyConfig(savedConfigs[name])
+        refreshKeybindDisplays()
+        configNameBox.PlaceholderText = "Loaded: " .. name
+    else
+        configNameBox.PlaceholderText = "Not found: " .. name
+    end
+end)
+
+makeConfigBtn("Delete Config", Color3.fromRGB(255, 80, 80), 4, function()
+    local name = configNameBox.Text
+    if name == "" then name = "default" end
+    savedConfigs[name] = nil
+    pcall(function()
+        local encoded = HttpService:JSONEncode(savedConfigs)
+        writefile("alexv2_configs.json", encoded)
+    end)
+    for k in pairs(Keybinds) do
+        Keybinds[k] = nil
+        if ToggleCallbacks[k] and ToggleCallbacks[k].setKeybind then
+            ToggleCallbacks[k].setKeybind(nil)
+        end
+    end
+    configNameBox.PlaceholderText = "Deleted: " .. name
+end)
+
+makeConfigBtn("Refresh List", Color3.fromRGB(200, 200, 100), 6, function()
+    refreshConfigList()
+end)
+
+refreshConfigList()
+
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer or not player.Character then continue end
+        pcall(function()
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local shouldExpand = HitboxEnabled
+                and (isTarget(player.Name) or isTarget(player.DisplayName))
+                and not isFriend(player.Name)
+                and not isFriend(player.DisplayName)
+            if not shouldExpand then
+                hrp.Size = Vector3.new(2, 2, 1)
+                hrp.Transparency = 1
+                hrp.Material = Enum.Material.Plastic
+                hrp.CanCollide = false
+                return
+            end
+            hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+            hrp.CanCollide = false
+            if HitboxVisible then
+                hrp.Transparency = 0.7
+                hrp.Material = Enum.Material.Neon
+                hrp.BrickColor = BrickColor.new("White")
+            else
+                hrp.Transparency = 1
+                hrp.Material = Enum.Material.Plastic
+            end
+        end)
+    end
+end)
+
+local RE = {HitRemote = nil, PunchDoRemote = nil}
+task.spawn(function()
+    task.wait(1)
+    pcall(function()
+        RE.HitRemote = ReplicatedStorage.Packages.Knit.Services.CombatService.RF.Hit
+        RE.PunchDoRemote = ReplicatedStorage.Packages.Knit.Services.CombatService.RF.PunchDo
+    end)
+end)
+
+local auraLoop
+local lastAttack = 0
+
+startKillAura = function()
+    if auraLoop then auraLoop:Disconnect() end
+    lastAttack = 0
+    auraLoop = RunService.Heartbeat:Connect(function()
+        if not KillAuraEnabled or ScriptUnloaded then return end
+        local now = tick()
+        if now - lastAttack < (1 / AttacksPerSecond) then return end
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        local myPos = char.HumanoidRootPart.Position
+        local targets = {}
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr == LocalPlayer or not plr.Character then continue end
+            if isFriend(plr.Name) or isFriend(plr.DisplayName) then continue end
+            if not isTarget(plr.Name) and not isTarget(plr.DisplayName) then continue end
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum.Health > 0 then
+                local dist = (hrp.Position - myPos).Magnitude
+                if dist <= KillAuraRange then table.insert(targets, {char = plr.Character, dist = dist}) end
+            end
+        end
+        table.sort(targets, function(a, b) return a.dist < b.dist end)
+        if #targets == 0 then return end
+        lastAttack = now
+        for _, t in ipairs(targets) do
+            task.spawn(function()
+                pcall(function() if RE.PunchDoRemote then RE.PunchDoRemote:InvokeServer() end end)
+                task.wait(0.001)
+                pcall(function() local hum = t.char:FindFirstChildOfClass("Humanoid") if hum and RE.HitRemote then RE.HitRemote:InvokeServer(hum) end end)
+            end)
+        end
+    end)
+end
+
+stopKillAura = function()
+    if auraLoop then
+        auraLoop:Disconnect()
+        auraLoop = nil
+    end
+end
+
+safeConnect(UserInputService.InputBegan, function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.Insert or input.KeyCode == Enum.KeyCode.LeftControl then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+    for k, data in pairs(ToggleCallbacks) do
+        local kc = data.getKey and data.getKey()
+        if kc and input.KeyCode == kc then data.toggle() end
+    end
+    if Keybinds.Respawn and input.KeyCode == Keybinds.Respawn then
+        doRespawn()
+    end
+end)
+
+safeConnect(RunService.Heartbeat, function()
+    if AntiRagdollEnabled and LocalPlayer.Character then cleanRagdoll(LocalPlayer.Character) end
+end)
+
+safeConnect(UserInputService.InputBegan, function(input, gp)
+    if gp or not ClickToAddEnabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local pos = input.Position
+        local unitRay = Camera:ViewportPointToRay(pos.X, pos.Y)
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character or {}}
+        local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+        if result and result.Instance then
+            local model = result.Instance:FindFirstAncestorWhichIsA("Model")
+            if model then
+                local player = Players:GetPlayerFromCharacter(model)
+                if player and player ~= LocalPlayer then
+                    local name = player.Name
+                    local currentText = friendsText.Text
+                    local names = {}
+                    local found = false
+                    for n in currentText:gmatch("%S+") do
+                        if n:lower() == name:lower() then
+                            found = true
+                        else
+                            table.insert(names, n)
+                        end
+                    end
+                    if not found then
+                        table.insert(names, name)
+                    end
+                    friendsText.Text = table.concat(names, " ")
+                end
+            end
+        end
+    end
+end)
+
+game:BindToClose(function()
+    ScriptUnloaded = true
+    for _, conn in ipairs(AllConnections) do pcall(function() conn:Disconnect() end) end
+    stopAutoBlock()
+    stopAntiRagCombo()
+    stopSpamGrab()
+    if _arc_returnTask then task.cancel(_arc_returnTask) end
+    for _, tag in pairs(FriendNametags) do pcall(function() tag:Destroy() end) end
+    for _, tag in pairs(TargetNametags) do pcall(function() tag:Destroy() end) end
+end)
