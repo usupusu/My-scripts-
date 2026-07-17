@@ -514,7 +514,7 @@ local function startSpamGrab()
             pcall(function()
                 ReplicatedStorage.Packages.Knit.Services.CombatService.RF.Grab:InvokeServer()
             end)
-            task.wait(0.1)
+            task.wait(0.0001)
         end
         spamGrabThread = nil
     end)
@@ -1754,3 +1754,4 @@ game:BindToClose(function()
     for _, tag in pairs(FriendNametags) do pcall(function() tag:Destroy() end) end
     for _, tag in pairs(TargetNametags) do pcall(function() tag:Destroy() end) end
 end)
+ 
